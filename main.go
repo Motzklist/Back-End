@@ -29,6 +29,10 @@ type Equipment struct {
 	Quantity int    `json:"quantity"`
 }
 
+type EquipmentListResponse struct {
+	Items []Equipment `json:"items"`
+}
+
 func enableCORS(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// Allow requests from any origin during development (change this for production!)
@@ -144,12 +148,12 @@ func getClassesHandler(w http.ResponseWriter, r *http.Request) {
 func getEquipmentListsHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	// Extract the required query parameters
+	// Extract the required query parameters (unchanged)
 	schoolID := r.URL.Query().Get("school_id")
 	gradeID := r.URL.Query().Get("grade_id")
 	classID := r.URL.Query().Get("class_id")
 
-	// 1. Input Validation
+	// 1. Input Validation (unchanged)
 	if schoolID == "" || gradeID == "" || classID == "" {
 		http.Error(w, "Missing required query parameters: school_id, grade_id, or class_id", http.StatusBadRequest)
 		return
@@ -157,16 +161,20 @@ func getEquipmentListsHandler(w http.ResponseWriter, r *http.Request) {
 
 	log.Printf("Received request for equipment list: School=%s, Grade=%s, Class=%s", schoolID, gradeID, classID)
 
-	// LATER: The mock data here would be filtered based on all three IDs
-	// For now, we return the full mock list regardless of the IDs.
-
 	// LATER: connect to database, extract corresponding list and parse it
 	equipment := GetEquipmentList(schoolID, gradeID, classID)
 
-	// Convert to Json
-	if err := json.NewEncoder(w).Encode(equipment); err != nil {
+	// --- CRITICAL CHANGE STARTS HERE ---
+	// 1. Wrap the equipment slice into the structured response object
+	response := EquipmentListResponse{
+		Items: equipment,
+	}
+
+	// 2. Encode the structured response object
+	if err := json.NewEncoder(w).Encode(response); err != nil {
 		http.Error(w, "Failed to encode equipment response", http.StatusInternalServerError)
 		log.Printf("Error encoding response: %v", err)
 		return
 	}
+	log.Printf("Successfully served /api/equipment request")
 }
