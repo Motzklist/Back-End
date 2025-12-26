@@ -94,3 +94,25 @@ func GetEquipmentList(schoolID, gradeID, classID string) []Equipment {
 	// Return a default list if no specific list is defined
 	return MockEquipmentLists["default"]
 }
+
+// ======NEW======
+// data for login page
+var MockUsers = []User{
+	{UserID: "1", Username: "avner", Password: "2004"},
+	{UserID: "2", Username: "admin", Password: "1234"},
+	{UserID: "3", Username: "noam", Password: "1919"},
+}
+
+// data for cart
+var MockCarts = map[string][]Equipment{
+	"1": {
+		{ID: "101", Name: "Notebook", Quantity: 2},
+		{ID: "102", Name: "Engineering Calculator", Quantity: 1},
+		{ID: "103", Name: "Physics Textbook - Advanced", Quantity: 1},
+	},
+	"2": {
+		{ID: "201", Name: "Laptop (Required)", Quantity: 1},
+		{ID: "202", Name: "Engineering Calculator", Quantity: 1},
+		{ID: "203", Name: "Physics Textbook - Beginners", Quantity: 1},
+	},
+}
