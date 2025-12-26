@@ -33,6 +33,14 @@ type EquipmentListResponse struct {
 	Items []Equipment `json:"items"`
 }
 
+// =====NEW=====
+// login
+type User struct {
+	UserID   string `json:"userid"`
+	Username string `json:"username"`
+	Password string `json:"password"`
+}
+
 func enableCORS(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// Allow requests from any origin during development (change this for production!)
