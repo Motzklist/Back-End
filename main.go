@@ -253,7 +253,20 @@ func postLoginHandler(w http.ResponseWriter, r *http.Request) {
 
 	for _, user := range MockUsers {
 		if user.Username == credentials.Username && user.Password == credentials.Password {
-			json.NewEncoder(w).Encode(map[string]string{"userid": user.UserID})
+			// Session generation
+			sessionID := generateSessionID()
+			sessions[sessionID] = user.UserID
+
+			// Cookie setting
+			http.SetCookie(w, &http.Cookie{
+				Name:     "sessionid",
+				Value:    sessionID,
+				Path:     "/",
+				HttpOnly: true,
+				//Secure:	true, // Uncomment this line if using HTTPS
+				//SameSite: http.SameSiteStrictMode,
+			})
+			json.NewEncoder(w).Encode(map[string]string{"userid": user.UserID, "username": user.Username})
 			return
 		}
 	}
