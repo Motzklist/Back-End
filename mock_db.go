@@ -19,29 +19,17 @@ var MockGrades = []Grade{
 	{"12", "12th Grade"},
 }
 
-// Classes data (1-8)
-var MockClasses = []Class{
-	{"1", "Class 1"},
-	{"2", "Class 2"},
-	{"3", "Class 3"},
-	{"4", "Class 4"},
-	{"5", "Class 5"},
-	{"6", "Class 6"},
-	{"7", "Class 7"},
-	{"8", "Class 8"},
-}
-
 // Equipment data (This is complex and needs filtering logic)
-// To simulate different lists, we'll use a map keyed by a combination string: SchoolID-GradeID-ClassID
+// To simulate different lists, we'll use a map keyed by a combination string: SchoolID-GradeID
 var MockEquipmentLists = map[string][]Equipment{
-	// Example: List for Ben Gurion (1), 9th Grade (9), Class 1 (1)
-	"1-9-1": {
+	// Example: List for Ben Gurion (1), 9th Grade (9)
+	"1-9": {
 		{"101", "Notebook (Ruled)", 5},
 		{"102", "Pencil", 12},
 		{"103", "Math Textbook - Algebra I", 1},
 	},
-	// Example: List for ORT (2), 12th Grade (12), Class 5 (5)
-	"2-12-5": {
+	// Example: List for ORT (2), 12th Grade (12)
+	"2-12": {
 		{"201", "Laptop (Required)", 1},
 		{"202", "Engineering Calculator", 1},
 		{"203", "Physics Textbook - Advanced", 1},
@@ -72,19 +60,9 @@ func GetGradesBySchoolID(schoolID string) []Grade {
 	return nil // School not found
 }
 
-// Get classes for a specific grade.
-func GetClassesByGradeID(schoolID, gradeID string) []Class {
-	// Simple validation: Ensure school and grade IDs are valid before returning classes.
-	if GetGradesBySchoolID(schoolID) == nil {
-		return nil // Invalid school
-	}
-	// In this simple mock, we don't need gradeID for filtering classes (always 1-8).
-	return MockClasses
-}
-
 // Get equipment list based on selection.
-func GetEquipmentList(schoolID, gradeID, classID string) []Equipment {
-	key := fmt.Sprintf("%s-%s-%s", schoolID, gradeID, classID)
+func GetEquipmentList(schoolID, gradeID string) []Equipment {
+	key := fmt.Sprintf("%s-%s", schoolID, gradeID)
 
 	// Attempt to find a specific list
 	if list, ok := MockEquipmentLists[key]; ok {
@@ -110,7 +88,6 @@ type CartEntry struct {
 	Timestamp int64       `json:"timestamp"`
 	School    School      `json:"school"`
 	Grade     Grade       `json:"grade"`
-	Class     Class       `json:"class"`
 	Items     []Equipment `json:"items"`
 }
 
@@ -122,7 +99,6 @@ var MockCarts = map[string][]CartEntry{
 			Timestamp: 1700000000,
 			School:    School{ID: "1", Name: "Ben Gurion"},
 			Grade:     Grade{ID: "9", Name: "9th Grade"},
-			Class:     Class{ID: "1", Name: "Class 1"},
 			Items: []Equipment{
 				{ID: "101", Name: "Notebook", Quantity: 2},
 				{ID: "102", Name: "Engineering Calculator", Quantity: 1},
@@ -136,7 +112,6 @@ var MockCarts = map[string][]CartEntry{
 			Timestamp: 1700000001,
 			School:    School{ID: "2", Name: "ORT"},
 			Grade:     Grade{ID: "12", Name: "12th Grade"},
-			Class:     Class{ID: "5", Name: "Class 5"},
 			Items: []Equipment{
 				{ID: "201", Name: "Laptop (Required)", Quantity: 1},
 				{ID: "202", Name: "Engineering Calculator", Quantity: 1},
