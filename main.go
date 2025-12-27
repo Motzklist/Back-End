@@ -86,6 +86,7 @@ func main() {
 	http.HandleFunc("/api/equipment", enableCORS(getEquipmentListsHandler))
 	http.HandleFunc("/api/auth/status", enableCORS(authStatusHandler))
 	http.HandleFunc("/api/login", enableCORS(postLoginHandler))
+	http.HandleFunc("/api/logout", enableCORS(logoutHandler))
 	http.HandleFunc("/api/cart", enableCORS(getPostCartHandler))
 
 	// Start the API Gateway server
@@ -271,7 +272,22 @@ func postLoginHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	http.Error(w, "Unauthorized", http.StatusUnauthorized)
+	JSONError(w, "Incorrect username or password. Please try again.", http.StatusUnauthorized)
+}
+
+func logoutHandler(w http.ResponseWriter, r *http.Request) {
+	cookie, err := r.Cookie("sessionid")
+	if err == nil {
+		delete(sessions, cookie.Value)
+	}
+	http.SetCookie(w, &http.Cookie{
+		Name:     "sessionid",
+		Value:    "",
+		Path:     "/",
+		MaxAge:   -1,
+		HttpOnly: true,
+	})
+	w.WriteHeader(http.StatusOK)
 }
 
 func getPostCartHandler(w http.ResponseWriter, r *http.Request) {
