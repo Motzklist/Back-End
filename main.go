@@ -33,6 +33,12 @@ type EquipmentListResponse struct {
 	Items []Equipment `json:"items"`
 }
 
+func JSONError(w http.ResponseWriter, err string, code int) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(code)
+	json.NewEncoder(w).Encode(map[string]string{"error": err})
+}
+
 // =====NEW=====
 // login
 type User struct {
