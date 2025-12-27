@@ -18,11 +18,7 @@ The following JSON structures are used across all endpoints:
 | `id` | `string` | Unique identifier for the grade level (e.g., "9"). |
 | `name` | `string` | Display name of the grade (e.g., "9th Grade"). |
 
-### Class Object
-| Field | Type | Description |
-| :--- | :--- | :--- |
-| `id` | `string` | Unique identifier for the class/section (e.g., "1"). |
-| `name` | `string` | Display name of the class (e.g., "Class 1"). |
+> **Note:** The Class Object has been removed from the schema as per the client's vision. All logic and data structures now depend only on school and grade.
 
 ### Equipment Object
 | Field | Type | Description |
@@ -62,3 +58,4 @@ Retrieves the initial list of schools to populate the first dropdown.
     "name": "ORT"
   }
 ]
+```

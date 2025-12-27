@@ -32,11 +32,6 @@ type Grade struct {
 	Name string `json:"name"`
 }
 
-type Class struct {
-	ID   string `json:"id"`
-	Name string `json:"name"`
-}
-
 type Equipment struct {
 	ID       string `json:"id"`
 	Name     string `json:"name"`
@@ -87,10 +82,9 @@ func enableCORS(next http.HandlerFunc) http.HandlerFunc {
 }
 
 func main() {
-	// Handler for getSchools, getGrades, getClasses, getEquipment
+	// Handler for getSchools, getGrades, getEquipment
 	http.HandleFunc("/api/schools", enableCORS(getSchoolsHandler))
 	http.HandleFunc("/api/grades", enableCORS(getGradesHandler))
-	http.HandleFunc("/api/classes", enableCORS(getClassesHandler))
 	http.HandleFunc("/api/equipment", enableCORS(getEquipmentListsHandler))
 	http.HandleFunc("/api/auth/status", enableCORS(authStatusHandler))
 	http.HandleFunc("/api/login", enableCORS(postLoginHandler))
@@ -154,63 +148,28 @@ func getGradesHandler(w http.ResponseWriter, r *http.Request) {
 	log.Printf("Successfully served /api/grades request")
 }
 
-func getClassesHandler(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-
-	// Extract the required query parameters
-	schoolID := r.URL.Query().Get("school_id")
-	gradeID := r.URL.Query().Get("grade_id")
-
-	// 1. Input Validation: Check if any required parameter is missing
-	if schoolID == "" || gradeID == "" {
-		JSONError(w, "Missing required query parameter: school_id, grade_id", http.StatusBadRequest)
-		return
-	}
-
-	log.Printf("Received request for classes in school ID: %s, Grade ID: %s", schoolID, gradeID)
-
-	// LATER: The mock data here would be filtered based on schoolID and gradeID
-	// For now, we return the full mock list regardless of the IDs.
-
-	// LATER: connect to database, extract corresponding list and parse it
-	classes := GetClassesByGradeID(schoolID, gradeID)
-
-	// Convert to Json
-	if err := json.NewEncoder(w).Encode(classes); err != nil {
-		JSONError(w, "Failed to encode classes response", http.StatusInternalServerError)
-		log.Printf("Error encoding response: %v", err)
-		return
-	}
-	log.Printf("Successfully served /api/classes request")
-
-}
-
 func getEquipmentListsHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	// Extract the required query parameters (unchanged)
+	// Extract the required query parameters (updated)
 	schoolID := r.URL.Query().Get("school_id")
 	gradeID := r.URL.Query().Get("grade_id")
-	classID := r.URL.Query().Get("class_id")
 
-	// 1. Input Validation (unchanged)
-	if schoolID == "" || gradeID == "" || classID == "" {
-		JSONError(w, "Missing required query parameters: school_id, grade_id, or class_id", http.StatusBadRequest)
+	// 1. Input Validation (updated)
+	if schoolID == "" || gradeID == "" {
+		JSONError(w, "Missing required query parameters: school_id or grade_id", http.StatusBadRequest)
 		return
 	}
 
-	log.Printf("Received request for equipment list: School=%s, Grade=%s, Class=%s", schoolID, gradeID, classID)
+	log.Printf("Received request for equipment list: School=%s, Grade=%s", schoolID, gradeID)
 
 	// LATER: connect to database, extract corresponding list and parse it
-	equipment := GetEquipmentList(schoolID, gradeID, classID)
+	equipment := GetEquipmentList(schoolID, gradeID)
 
-	// --- CRITICAL CHANGE STARTS HERE ---
-	// 1. Wrap the equipment slice into the structured response object
 	response := EquipmentListResponse{
 		Items: equipment,
 	}
 
-	// 2. Encode the structured response object
 	if err := json.NewEncoder(w).Encode(response); err != nil {
 		JSONError(w, "Failed to encode equipment response", http.StatusInternalServerError)
 		log.Printf("Error encoding response: %v", err)
