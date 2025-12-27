@@ -103,16 +103,45 @@ var MockUsers = []User{
 	{UserID: "3", Username: "noam", Password: "1919"},
 }
 
+// CartEntry structure for frontend compatibility
+// (matches what the frontend expects)
+type CartEntry struct {
+	ID        string      `json:"id"`
+	Timestamp int64       `json:"timestamp"`
+	School    School      `json:"school"`
+	Grade     Grade       `json:"grade"`
+	Class     Class       `json:"class"`
+	Items     []Equipment `json:"items"`
+}
+
 // data for cart
-var MockCarts = map[string][]Equipment{
+var MockCarts = map[string][]CartEntry{
 	"1": {
-		{ID: "101", Name: "Notebook", Quantity: 2},
-		{ID: "102", Name: "Engineering Calculator", Quantity: 1},
-		{ID: "103", Name: "Physics Textbook - Advanced", Quantity: 1},
+		{
+			ID:        "cart-1",
+			Timestamp: 1700000000,
+			School:    School{ID: "1", Name: "Ben Gurion"},
+			Grade:     Grade{ID: "9", Name: "9th Grade"},
+			Class:     Class{ID: "1", Name: "Class 1"},
+			Items: []Equipment{
+				{ID: "101", Name: "Notebook", Quantity: 2},
+				{ID: "102", Name: "Engineering Calculator", Quantity: 1},
+				{ID: "103", Name: "Physics Textbook - Advanced", Quantity: 1},
+			},
+		},
 	},
 	"2": {
-		{ID: "201", Name: "Laptop (Required)", Quantity: 1},
-		{ID: "202", Name: "Engineering Calculator", Quantity: 1},
-		{ID: "203", Name: "Physics Textbook - Beginners", Quantity: 1},
+		{
+			ID:        "cart-2",
+			Timestamp: 1700000001,
+			School:    School{ID: "2", Name: "ORT"},
+			Grade:     Grade{ID: "12", Name: "12th Grade"},
+			Class:     Class{ID: "5", Name: "Class 5"},
+			Items: []Equipment{
+				{ID: "201", Name: "Laptop (Required)", Quantity: 1},
+				{ID: "202", Name: "Engineering Calculator", Quantity: 1},
+				{ID: "203", Name: "Physics Textbook - Beginners", Quantity: 1},
+			},
+		},
 	},
 }
