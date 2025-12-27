@@ -304,21 +304,21 @@ func getPostCartHandler(w http.ResponseWriter, r *http.Request) {
 
 	switch r.Method {
 	case http.MethodGet:
-		// Return existing cart
+		// Return existing cart (now returns []CartEntry)
 		cart, exists := MockCarts[userID]
 		if !exists {
-			cart = []Equipment{} // Return empty list if no cart exists
+			cart = []CartEntry{} // Return empty list if no cart exists
 		}
 		json.NewEncoder(w).Encode(cart)
 
 	case http.MethodPost, http.MethodPut:
-		// Update the cart
-		var newItems []Equipment
-		if err := json.NewDecoder(r.Body).Decode(&newItems); err != nil {
-			http.Error(w, "Invalid data", http.StatusBadRequest)
+		// Update the cart (expects []CartEntry)
+		var newEntries []CartEntry
+		if err := json.NewDecoder(r.Body).Decode(&newEntries); err != nil {
+			JSONError(w, "Failed to decode request body", http.StatusBadRequest)
 			return
 		}
-		MockCarts[userID] = newItems
+		MockCarts[userID] = newEntries
 		w.WriteHeader(http.StatusOK)
 		fmt.Fprintf(w, "Cart updated successfully")
 
