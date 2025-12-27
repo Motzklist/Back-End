@@ -63,12 +63,17 @@ type User struct {
 
 func enableCORS(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		// Allow requests from any origin during development (change this for production!)
-		w.Header().Set("Access-Control-Allow-Origin", "*")
+		origin := r.Header.Get("Origin")
+		// Allow only the frontend origin
+		if origin == "http://localhost:3000" {
+			w.Header().Set("Access-Control-Allow-Origin", origin)
+		}
+		// For production, use your real frontend URL above
+
 		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
 		w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+		w.Header().Set("Access-Control-Allow-Credentials", "true")
 
-		// Handle preflight requests
 		if r.Method == "OPTIONS" {
 			w.WriteHeader(http.StatusOK)
 			return
