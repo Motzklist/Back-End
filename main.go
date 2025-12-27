@@ -84,6 +84,7 @@ func main() {
 	http.HandleFunc("/api/grades", enableCORS(getGradesHandler))
 	http.HandleFunc("/api/classes", enableCORS(getClassesHandler))
 	http.HandleFunc("/api/equipment", enableCORS(getEquipmentListsHandler))
+	http.HandleFunc("/api/auth/status", enableCORS(authStatusHandler))
 	http.HandleFunc("/api/login", enableCORS(postLoginHandler))
 	http.HandleFunc("/api/cart", enableCORS(getPostCartHandler))
 
