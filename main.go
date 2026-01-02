@@ -6,6 +6,7 @@ import (
 	"log"
 	"math/rand"
 	"net/http"
+	"os"
 	"time"
 )
 
@@ -63,7 +64,11 @@ func enableCORS(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		origin := r.Header.Get("Origin")
 		// Allow only the frontend origin
-		if origin == "http://localhost:3000" {
+		allowed_origin := os.Getenv("CLIENT_ORIGIN")
+		if allowed_origin == "" {
+			allowed_origin = "http://localhost:3000" // default for local development
+		}
+		if origin == allowed_origin {
 			w.Header().Set("Access-Control-Allow-Origin", origin)
 		}
 		// For production, use your real frontend URL above
