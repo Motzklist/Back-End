@@ -112,7 +112,7 @@ func getSchoolsHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
 	// LATER: connect to database, extract corresponding list and parse it
-	schools := GetSchools()
+	schools := getSchools()
 
 	// Convert to Json
 	if err := json.NewEncoder(w).Encode(schools); err != nil {
@@ -142,7 +142,7 @@ func getGradesHandler(w http.ResponseWriter, r *http.Request) {
 
 	// LATER: connect to database, extract corresponding list and parse it
 
-	grades := GetGradesBySchoolID(schoolID)
+	grades := getGrades(schoolID)
 
 	// Convert to Json
 	if err := json.NewEncoder(w).Encode(grades); err != nil {
@@ -169,7 +169,7 @@ func getEquipmentListsHandler(w http.ResponseWriter, r *http.Request) {
 	log.Printf("Received request for equipment list: School=%s, Grade=%s", schoolID, gradeID)
 
 	// LATER: connect to database, extract corresponding list and parse it
-	equipment := GetEquipmentList(schoolID, gradeID)
+	equipment := getEquipment(schoolID, gradeID)
 
 	response := EquipmentListResponse{
 		Items: equipment,
@@ -198,17 +198,16 @@ func authStatusHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	for _, user := range MockUsers {
-		if user.UserID == userID {
-			err := json.NewEncoder(w).Encode(map[string]string{"userid": user.UserID, "username": user.Username})
-			if err != nil {
-				log.Printf("Failed to encode auth status response: %v", err)
-			}
-			return
+	var username = getUsernameFromUserID(userID)
+	if username != "" {
+		err := json.NewEncoder(w).Encode(map[string]string{"userid": userID, "username": username})
+		if err != nil {
+			log.Printf("Failed to encode auth status response: %v", err)
 		}
+		return
+	} else {
+		JSONError(w, "Unauthorized", http.StatusUnauthorized)
 	}
-
-	JSONError(w, "Unauthorized", http.StatusUnauthorized)
 }
 
 func postLoginHandler(w http.ResponseWriter, r *http.Request) {
@@ -227,30 +226,30 @@ func postLoginHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	for _, user := range MockUsers {
-		if user.Username == credentials.Username && user.Password == credentials.Password {
-			// Session generation
-			sessionID := generateSessionID()
-			sessions[sessionID] = user.UserID
+	var userId = getUserIDByCredentials(credentials.Username, credentials.Password)
 
-			// Cookie setting
-			http.SetCookie(w, &http.Cookie{
-				Name:     "sessionid",
-				Value:    sessionID,
-				Path:     "/",
-				HttpOnly: true,
-				//Secure: true, // Uncomment this line if using HTTPS
-				//SameSite: http.SameSiteStrictMode,
-			})
-			err := json.NewEncoder(w).Encode(map[string]string{"userid": user.UserID, "username": user.Username})
-			if err != nil {
-				log.Printf("Failed to encode login response: %v", err)
-			}
-			return
+	if userId == "" {
+		JSONError(w, "Incorrect username or password. Please try again.", http.StatusUnauthorized)
+	} else {
+		// Session generation
+		sessionID := generateSessionID()
+		sessions[sessionID] = userId
+
+		// Cookie setting
+		http.SetCookie(w, &http.Cookie{
+			Name:     "sessionid",
+			Value:    sessionID,
+			Path:     "/",
+			HttpOnly: true,
+			//Secure: true, // Uncomment this line if using HTTPS
+			//SameSite: http.SameSiteStrictMode,
+		})
+		err := json.NewEncoder(w).Encode(map[string]string{"userid": userId, "username": credentials.Username})
+		if err != nil {
+			log.Printf("Failed to encode login response: %v", err)
 		}
+		return
 	}
-
-	JSONError(w, "Incorrect username or password. Please try again.", http.StatusUnauthorized)
 }
 
 func logoutHandler(w http.ResponseWriter, r *http.Request) {
@@ -278,10 +277,7 @@ func getPostCartHandler(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodGet:
 		// Return existing cart (now returns []CartEntry)
-		cart, exists := MockCarts[userID]
-		if !exists {
-			cart = []CartEntry{} // Return empty list if no cart exists
-		}
+		cart := getCartByUserID(userID)
 		err := json.NewEncoder(w).Encode(cart)
 		if err != nil {
 			log.Printf("Failed to encode cart response: %v", err)
@@ -294,7 +290,7 @@ func getPostCartHandler(w http.ResponseWriter, r *http.Request) {
 			JSONError(w, "Failed to decode request body", http.StatusBadRequest)
 			return
 		}
-		MockCarts[userID] = newEntries
+		saveCart(userID, newEntries)
 		w.WriteHeader(http.StatusOK)
 		if _, err := fmt.Fprintf(w, "Cart updated successfully"); err != nil {
 			log.Printf("Failed to write cart update response: %v", err)
