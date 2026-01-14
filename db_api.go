@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"strconv"
+	"time"
 
 	_ "github.com/lib/pq"
 )
@@ -12,46 +13,30 @@ import (
 var DB *sql.DB
 
 func InitDB() {
+	connStr := "host=database user=user password=password dbname=motzklist_db sslmode=disable"
 	var err error
-	connStr := "user=postgres password=mysecretpassword dbname=school_db sslmode=disable"
-	DB, err = sql.Open("postgres", connStr)
-	if err != nil {
-		log.Fatal(err)
+
+	// Try to connect 5 times with a 2-second sleep between attempts
+	for i := 0; i < 5; i++ {
+		DB, err = sql.Open("postgres", connStr)
+		if err == nil {
+			err = DB.Ping()
+			if err == nil {
+				fmt.Println("Connected to Database successfully!")
+				return
+			}
+		}
+		log.Printf("Database not ready... backing off (attempt %d/5)", i+1)
+		time.Sleep(2 * time.Second)
 	}
 
-	if err = DB.Ping(); err != nil {
-		log.Fatal("Cannot connect to Database:", err)
-	}
-	fmt.Println("Connected to Database successfully!")
-}
-
-//--------------------------------------------------------structs----------------------------------------------------
-type School struct {
-	ID   string `json:"id"`
-	Name string `json:"name"`
-}
-
-type Grade struct {
-	ID   string `json:"id"`
-	Name string `json:"name"`
-}
-
-type Equipment struct {
-	ID       string `json:"id"`
-	Name     string `json:"name"`
-	Quantity int    `json:"quantity"`
-}
-
-type CartEntry struct {
-	ID     string      `json:"id"`
-	School School      `json:"school"`
-	Grade  Grade       `json:"grade"`
-	Items  []Equipment `json:"items"`
+	log.Fatal("Could not connect to database after 5 attempts:", err)
 }
 
 // --- Implementation ---
 
 func getSchools() []School {
+	log.Println("Got to getSchools function")
 	rows, err := DB.Query("SELECT sid, sname FROM school")
 	if err != nil {
 		log.Println("Error getting schools:", err)
@@ -72,6 +57,7 @@ func getSchools() []School {
 }
 
 func getGrades(schoolID string) []Grade {
+	log.Println("Got to getGrades function")
 	sid, _ := strconv.Atoi(schoolID)
 	rows, err := DB.Query("SELECT gid, gname FROM grade WHERE sid = $1", sid)
 	if err != nil {
@@ -93,6 +79,7 @@ func getGrades(schoolID string) []Grade {
 }
 
 func getEquipment(schoolID string, gradeID string) []Equipment {
+	log.Println("Got to getEquipment function")
 	gid, _ := strconv.Atoi(gradeID)
 
 	query := `
@@ -121,9 +108,10 @@ func getEquipment(schoolID string, gradeID string) []Equipment {
 }
 
 func getUserIDByCredentials(userName, password string) string {
+	log.Println("Got to getUserIDByCredentials function")
 	var uid string
 	query := "SELECT uid FROM users WHERE uname = $1 AND password = $2"
-	
+
 	err := DB.QueryRow(query, userName, password).Scan(&uid)
 	if err != nil {
 		return ""
@@ -132,6 +120,7 @@ func getUserIDByCredentials(userName, password string) string {
 }
 
 func getUsernameFromUserID(userID string) string {
+	log.Println("Got to getUsernameFromUserID function")
 	var uname string
 	uid, _ := strconv.Atoi(userID)
 
@@ -144,6 +133,7 @@ func getUsernameFromUserID(userID string) string {
 }
 
 func getCartByUserID(userID string) []CartEntry {
+	log.Println("Got to getCartByUserID function")
 	uid, _ := strconv.Atoi(userID)
 	var cart []CartEntry
 	queryEntry := `
@@ -168,15 +158,16 @@ func getCartByUserID(userID string) []CartEntry {
 			continue
 		}
 		ce.ID = entryID
-	
+
 		ce.Items = getCartItemsFromApply(entryID)
-		
+
 		cart = append(cart, ce)
 	}
 	return cart
 }
 
 func getCartItemsFromApply(ceidStr string) []Equipment {
+	log.Println("Got to getCartItemsFromApply function")
 	ceid, _ := strconv.Atoi(ceidStr)
 
 	query := `
@@ -205,6 +196,7 @@ func getCartItemsFromApply(ceidStr string) []Equipment {
 }
 
 func saveCart(userID string, cart []CartEntry) {
+	log.Println("Got to saveCart function")
 	uid, _ := strconv.Atoi(userID)
 	tx, err := DB.Begin()
 	if err != nil {
@@ -230,10 +222,9 @@ func saveCart(userID string, cart []CartEntry) {
 			return
 		}
 
-
 		for _, item := range entry.Items {
 			eid, _ := strconv.Atoi(item.ID)
-			
+
 			for i := 0; i < item.Quantity; i++ {
 				_, err := tx.Exec("INSERT INTO apply (ceid, eid) VALUES ($1, $2)", newCeid, eid)
 				if err != nil {
