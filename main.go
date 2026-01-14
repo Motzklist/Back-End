@@ -101,6 +101,9 @@ func main() {
 	// Using fmt.Sprintf to format the port with a colon for ListenAndServe
 	serverAddr := fmt.Sprintf(":%s", port)
 
+	// New - supporting remote DB
+	InitDB()
+
 	// Fix E: Corrected format specifier to %s
 	fmt.Printf("API Gateway starting on port %s\n", port)
 
