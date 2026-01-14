@@ -6,9 +6,9 @@ LABEL authors="avner"
 WORKDIR /app
 
 # Copying the source code into the container
-COPY go.mod ./
+COPY go.mod go.sum ./
 
-RUN go mod tidy
+RUN go mod download
 
 COPY *.go ./
 
