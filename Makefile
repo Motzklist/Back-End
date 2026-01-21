@@ -23,3 +23,11 @@ clean:
 .PHONY: deps
 deps:
 	go mod download
+	
+.PHONY: test
+test:
+	@if command -v gotestsum > /dev/null; then \
+		gotestsum --format testname ./...; \
+	else \
+		go test -v ./...; \
+	fi
