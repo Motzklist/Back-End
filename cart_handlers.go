@@ -14,6 +14,7 @@ func getPostCartHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// TODO: make sure the front sends a POST request if items were picked
 	switch r.Method {
 	case http.MethodGet:
 		// Return existing cart (now returns []CartEntry)
