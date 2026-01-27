@@ -1,9 +1,57 @@
-# API-Gateway
+# Backend
 
-This repository holds the Go [Gin-Gonic](https://gin-gonic.com) API Gateway for the Motzklist project.
+This is the backend service for the project. It provides API endpoints and uses a mock database for testing purposes.
 
-TODO: 
-- Fill up documentation.
-- Fork, clone and setup local environment.
-- Setup commit sign-off: https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/managing-repository-settings/managing-the-commit-signoff-policy-for-your-repository
-- Setup commit signature verification: https://docs.github.com/en/authentication/managing-commit-signature-verification/about-commit-signature-verification
+## Table of Contents
+- [Project Structure](#project-structure)
+- [Requirements](#requirements)
+- [Installation](#installation)
+- [Usage](#usage)
+- [Environment Variables](#environment-variables)
+
+## Project Structure
+- Dockerfile
+- LICENSE
+- Makefile
+- README.md
+- SCHEMA.md
+- go.mod
+- main.go
+- mock_db.go
+
+## Requirements
+- Go 1.20+
+- Docker (optional)
+
+## Installation
+Clone the repository:
+```bash
+git clone https://github.com/Motzklist/Back-End.git
+cd Back-End
+```
+
+Install dependencies: 
+```bash
+go mod tidy
+```
+
+## Usage
+### Running locally
+```bash
+go run main.go
+```
+The server will start on port 8080. You can configure the port using PORT environment variable.
+
+### Using Docker
+Build the Docker image:
+```bash
+docker build -t backend-service .
+```
+Run the container:
+```bash
+docker run -p 8080:8080 backend-service
+```
+
+## Environment Variables
+- ```PORT``` – the port the server will run on (default: 8080)
+- ```FRONTEND_URL``` – the frontend URL for CORS configuration
