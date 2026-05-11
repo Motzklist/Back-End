@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/joho/godotenv"
 	"log"
 	"math/rand"
 	"net/http"
@@ -74,7 +75,11 @@ func enableCORS(next http.HandlerFunc) http.HandlerFunc {
 		// For production, use your real frontend URL above
 
 		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
-		w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+		// NEW - changing the value
+		w.Header().Set(
+			"Access-Control-Allow-Headers",
+			"Content-Type, Authorization",
+		)
 		w.Header().Set("Access-Control-Allow-Credentials", "true")
 
 		if r.Method == "OPTIONS" {
@@ -87,6 +92,13 @@ func enableCORS(next http.HandlerFunc) http.HandlerFunc {
 }
 
 func main() {
+
+	// NEW - for credit card API
+	err := godotenv.Load()
+	if err != nil {
+		log.Println("No .env file found")
+	}
+
 	// Handler for getSchools, getGrades, getEquipment
 	http.HandleFunc("/api/schools", enableCORS(getSchoolsHandler))
 	http.HandleFunc("/api/grades", enableCORS(getGradesHandler))
@@ -95,6 +107,7 @@ func main() {
 	http.HandleFunc("/api/login", enableCORS(postLoginHandler))
 	http.HandleFunc("/api/logout", enableCORS(logoutHandler))
 	http.HandleFunc("/api/cart", enableCORS(getPostCartHandler))
+	http.HandleFunc("/create-checkout-session", enableCORS(CreateCheckoutSession))
 
 	// Start the API Gateway server
 	port := "8080" // Changed port to string without colon for easier fmt use
