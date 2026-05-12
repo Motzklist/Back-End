@@ -171,11 +171,11 @@ func getCartItemsFromApply(ceidStr string) []Equipment {
 	ceid, _ := strconv.Atoi(ceidStr)
 
 	query := `
-		SELECT e.eid, e.ename, COUNT(a.eid) as qty
+		SELECT e.eid, e.ename,, e.price COUNT(a.eid) as qty
 		FROM apply a
 		JOIN equipment e ON a.eid = e.eid
 		WHERE a.ceid = $1
-		GROUP BY e.eid, e.ename
+		GROUP BY e.eid, e.ename, e.price
 	`
 	rows, err := DB.Query(query, ceid)
 	if err != nil {
@@ -187,7 +187,7 @@ func getCartItemsFromApply(ceidStr string) []Equipment {
 	var items []Equipment
 	for rows.Next() {
 		var item Equipment
-		if err := rows.Scan(&item.ID, &item.Name, &item.Quantity); err != nil {
+		if err := rows.Scan(&item.ID, &item.Name, &item.Price, &item.Quantity); err != nil {
 			continue
 		}
 		items = append(items, item)
