@@ -83,7 +83,7 @@ func getEquipment(schoolID string, gradeID string) []Equipment {
 	gid, _ := strconv.Atoi(gradeID)
 
 	query := `
-		SELECT e.eid, e.ename, r.quantity
+		SELECT e.eid, e.ename, e.price, r.quantity
 		FROM equipment e
 		JOIN requirement r ON e.eid = r.eid
 		WHERE r.gid = $1
@@ -98,7 +98,7 @@ func getEquipment(schoolID string, gradeID string) []Equipment {
 	var equipmentList []Equipment
 	for rows.Next() {
 		var e Equipment
-		if err := rows.Scan(&e.ID, &e.Name, &e.Quantity); err != nil {
+		if err := rows.Scan(&e.ID, &e.Name, &e.Price, &e.Quantity); err != nil {
 			log.Println(err)
 			continue
 		}

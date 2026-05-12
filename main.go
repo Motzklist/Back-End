@@ -3,12 +3,13 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/joho/godotenv"
 	"log"
 	"math/rand"
 	"net/http"
 	"os"
 	"time"
+
+	"github.com/joho/godotenv"
 )
 
 var sessions = map[string]string{} // sessionID -> userID
@@ -35,9 +36,10 @@ type Grade struct {
 }
 
 type Equipment struct {
-	ID       string `json:"id"`
-	Name     string `json:"name"`
-	Quantity int    `json:"quantity"`
+	ID       string  `json:"id"`
+	Name     string  `json:"name"`
+	Quantity int     `json:"quantity"`
+	Price    float64 `json:"price"`
 }
 
 type EquipmentListResponse struct {
