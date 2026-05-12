@@ -13,7 +13,7 @@ RUN go mod download
 COPY *.go ./
 
 # Building the Go application (
-RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o motzklist-api-gateway .
+RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o motzklist-backend .
 
 # Creating the final smaller image
 FROM alpine:latest
@@ -22,6 +22,6 @@ EXPOSE 8080
 # Set the working directory
 WORKDIR /root/
 # Copy the built binary from the builder stage
-COPY --from=builder /app/motzklist-api-gateway .
+COPY --from=builder /app/motzklist-backend .
 # Command to run the executable when the container starts
-CMD ["./motzklist-api-gateway"]
+CMD ["./motzklist-backend"]
