@@ -24,20 +24,20 @@ var MockGrades = []Grade{
 var MockEquipmentLists = map[string][]Equipment{
 	// Example: List for Ben Gurion (1), 9th Grade (9)
 	"1-9": {
-		{"101", "Notebook (Ruled)", 5},
-		{"102", "Pencil", 12},
-		{"103", "Math Textbook - Algebra I", 1},
+		{"101", "Notebook (Ruled)", 5, 5},
+		{"102", "Pencil", 12, 3},
+		{"103", "Math Textbook - Algebra I", 1, 40},
 	},
 	// Example: List for ORT (2), 12th Grade (12)
 	"2-12": {
-		{"201", "Laptop (Required)", 1},
-		{"202", "Engineering Calculator", 1},
-		{"203", "Physics Textbook - Advanced", 1},
+		{"201", "Laptop (Required)", 1, 3000},
+		{"202", "Engineering Calculator", 1, 150},
+		{"203", "Physics Textbook - Advanced", 1, 80},
 	},
 	// Default list for all other combinations
 	"default": {
-		{"901", "Binder (3-ring)", 2},
-		{"902", "Highlighters", 4},
+		{"901", "Binder (3-ring)", 2, 5},
+		{"902", "Highlighters", 4, 5},
 	},
 }
 
