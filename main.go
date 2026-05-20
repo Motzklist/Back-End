@@ -55,12 +55,26 @@ func JSONError(w http.ResponseWriter, err string, code int) {
 	}
 }
 
-// =====NEW=====
-// login
 type User struct {
 	UserID   string `json:"userid"`
 	Username string `json:"username"`
 	Password string `json:"password"`
+}
+
+// NEW - adding purchase history
+type OrderItem struct {
+	EquipmentName string  `json:"equipment_name"`
+	Quantity      int     `json:"quantity"`
+	Price         float64 `json:"price"`
+	TotalPrice    float64 `json:"total_price"`
+}
+
+type Order struct {
+	ID           string      `json:"order_id"`
+	GradeID      string      `json:"grade_id"`
+	PurchaseDate string      `json:"purchase_date"`
+	TotalAmount  float64     `json:"total_amount"`
+	Items        []OrderItem `json:"items"`
 }
 
 func enableCORS(next http.HandlerFunc) http.HandlerFunc {
@@ -110,6 +124,7 @@ func main() {
 	http.HandleFunc("/api/logout", enableCORS(logoutHandler))
 	http.HandleFunc("/api/cart", enableCORS(getPostCartHandler))
 	http.HandleFunc("/create-checkout-session", enableCORS(CreateCheckoutSession))
+	http.HandleFunc("/api/history", enableCORS(getOrderHistoryHandler))
 
 	// Start the API Gateway server
 	port := "8080" // Changed port to string without colon for easier fmt use
