@@ -1,13 +1,13 @@
 package main
 
 import (
+	"crypto/rand"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"log"
-	"math/rand"
 	"net/http"
 	"os"
-	"time"
 
 	"github.com/joho/godotenv"
 )
@@ -15,13 +15,11 @@ import (
 var sessions = map[string]string{} // sessionID -> userID
 
 func generateSessionID() string {
-	rand.New(rand.NewSource(time.Now().UnixNano()))
-	const letters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
-	b := make([]byte, 32)
-	for i := range b {
-		b[i] = letters[rand.Intn(len(letters))]
+	b := make([]byte, 24)
+	if _, err := rand.Read(b); err != nil {
+		log.Fatalf("Failed to generate session ID: %v", err)
 	}
-	return string(b)
+	return base64.RawURLEncoding.EncodeToString(b)
 }
 
 // School structure
@@ -90,7 +88,7 @@ func enableCORS(next http.HandlerFunc) http.HandlerFunc {
 		}
 		// For production, use your real frontend URL above
 
-		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, OPTIONS")
 		// NEW - changing the value
 		w.Header().Set(
 			"Access-Control-Allow-Headers",
@@ -123,7 +121,7 @@ func main() {
 	http.HandleFunc("/api/login", enableCORS(postLoginHandler))
 	http.HandleFunc("/api/logout", enableCORS(logoutHandler))
 	http.HandleFunc("/api/cart", enableCORS(getPostCartHandler))
-	http.HandleFunc("/create-checkout-session", enableCORS(CreateCheckoutSession))
+	http.HandleFunc("/api/create-checkout-session", enableCORS(CreateCheckoutSession))
 	http.HandleFunc("/api/history", enableCORS(getOrderHistoryHandler))
 
 	// Start the API Gateway server

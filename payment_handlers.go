@@ -2,10 +2,12 @@ package main
 
 import (
 	"encoding/json"
-	"github.com/stripe/stripe-go/v82"
-	"github.com/stripe/stripe-go/v82/checkout/session"
+	"log"
 	"net/http"
 	"os"
+
+	"github.com/stripe/stripe-go/v82"
+	"github.com/stripe/stripe-go/v82/checkout/session"
 )
 
 type CheckoutRequest struct {
@@ -21,7 +23,7 @@ type CheckoutResponse struct {
 func CreateCheckoutSession(w http.ResponseWriter, r *http.Request) {
 
 	if r.Method != http.MethodPost {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		JSONError(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
 
@@ -31,21 +33,31 @@ func CreateCheckoutSession(w http.ResponseWriter, r *http.Request) {
 
 	err := json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		JSONError(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	if req.ProductName == "" || req.Quantity <= 0 || req.Amount <= 0 {
+		JSONError(w, "productName, quantity, and amount must be provided and positive", http.StatusBadRequest)
 		return
 	}
 
 	frontendURL := os.Getenv("FRONTEND_URL")
+	if frontendURL == "" {
+		log.Println("FRONTEND_URL is not configured")
+		JSONError(w, "Server misconfigured: FRONTEND_URL is not set", http.StatusInternalServerError)
+		return
+	}
 
 	params := &stripe.CheckoutSessionParams{
-		SuccessURL: stripe.String(frontendURL + "/payment/success"),
+		SuccessURL: stripe.String(frontendURL + "/payment/success?session_id={CHECKOUT_SESSION_ID}"),
 		CancelURL:  stripe.String(frontendURL + "/payment/cancel"),
 		Mode:       stripe.String(string(stripe.CheckoutSessionModePayment)),
 		LineItems: []*stripe.CheckoutSessionLineItemParams{
 			{
 				Quantity: stripe.Int64(req.Quantity),
 				PriceData: &stripe.CheckoutSessionLineItemPriceDataParams{
-					Currency: stripe.String("usd"),
+					Currency: stripe.String("ils"),
 					ProductData: &stripe.CheckoutSessionLineItemPriceDataProductDataParams{
 						Name: stripe.String(req.ProductName),
 					},
@@ -57,7 +69,7 @@ func CreateCheckoutSession(w http.ResponseWriter, r *http.Request) {
 
 	s, err := session.New(params)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		JSONError(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
@@ -66,5 +78,7 @@ func CreateCheckoutSession(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
+	if err := json.NewEncoder(w).Encode(response); err != nil {
+		log.Printf("Failed to encode checkout session response: %v", err)
+	}
 }

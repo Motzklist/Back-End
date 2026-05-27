@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"strconv"
 	"time"
 
@@ -14,8 +15,22 @@ import (
 
 var DB *sql.DB
 
+func getenvDefault(key, def string) string {
+	if v := os.Getenv(key); v != "" {
+		return v
+	}
+	return def
+}
+
 func InitDB() {
-	connStr := "host=database user=user password=password dbname=motzklist_db sslmode=disable"
+	connStr := fmt.Sprintf(
+		"host=%s user=%s password=%s dbname=%s sslmode=%s",
+		getenvDefault("DB_HOST", "database"),
+		getenvDefault("DB_USER", "user"),
+		getenvDefault("DB_PASSWORD", "user"),
+		getenvDefault("DB_NAME", "motzklist_db"),
+		getenvDefault("DB_SSLMODE", "disable"),
+	)
 	var err error
 
 	// Try to connect 5 times with a 2-second sleep between attempts
@@ -173,7 +188,7 @@ func getCartItemsFromApply(ceidStr string) []Equipment {
 	ceid, _ := strconv.Atoi(ceidStr)
 
 	query := `
-		SELECT e.eid, e.ename,, e.price COUNT(a.eid) as qty
+		SELECT e.eid, e.ename, e.price, COUNT(a.eid) as qty
 		FROM apply a
 		JOIN equipment e ON a.eid = e.eid
 		WHERE a.ceid = $1
@@ -197,20 +212,20 @@ func getCartItemsFromApply(ceidStr string) []Equipment {
 	return items
 }
 
-func saveCart(userID string, cart []CartEntry) {
+func saveCart(userID string, cart []CartEntry) error {
 	log.Println("Got to saveCart function")
 	uid, _ := strconv.Atoi(userID)
 	tx, err := DB.Begin()
 	if err != nil {
 		log.Println("Error starting transaction:", err)
-		return
+		return fmt.Errorf("starting transaction: %w", err)
 	}
 
 	_, err = tx.Exec("DELETE FROM cartEntry WHERE uid = $1", uid)
 	if err != nil {
 		tx.Rollback()
 		log.Println("Error clearing old cart:", err)
-		return
+		return fmt.Errorf("clearing old cart: %w", err)
 	}
 
 	for _, entry := range cart {
@@ -221,7 +236,7 @@ func saveCart(userID string, cart []CartEntry) {
 		if err != nil {
 			tx.Rollback()
 			log.Println("Error inserting cartEntry:", err)
-			return
+			return fmt.Errorf("inserting cartEntry: %w", err)
 		}
 
 		for _, item := range entry.Items {
@@ -232,7 +247,7 @@ func saveCart(userID string, cart []CartEntry) {
 				if err != nil {
 					tx.Rollback()
 					log.Println("Error inserting to apply:", err)
-					return
+					return fmt.Errorf("inserting to apply: %w", err)
 				}
 			}
 		}
@@ -240,7 +255,9 @@ func saveCart(userID string, cart []CartEntry) {
 
 	if err = tx.Commit(); err != nil {
 		log.Println("Error committing transaction:", err)
+		return fmt.Errorf("committing transaction: %w", err)
 	}
+	return nil
 }
 
 // NEW - adding purchase history
@@ -321,7 +338,6 @@ func getOrderHistoryHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// בדיקת אימות משתמש באמצעות ה-Session (כמו בשאר ה-Handlers שלך)
 	cookie, err := r.Cookie("session_id")
 	if err != nil {
 		JSONError(w, "Unauthorized", http.StatusUnauthorized)

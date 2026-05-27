@@ -5,12 +5,17 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strconv"
 )
 
 func getPostCartHandler(w http.ResponseWriter, r *http.Request) {
 	userID := r.URL.Query().Get("userid")
 	if userID == "" {
 		JSONError(w, "Missing required query parameter: userid", http.StatusBadRequest)
+		return
+	}
+	if _, err := strconv.Atoi(userID); err != nil {
+		JSONError(w, "userid must be an integer", http.StatusBadRequest)
 		return
 	}
 
@@ -31,7 +36,10 @@ func getPostCartHandler(w http.ResponseWriter, r *http.Request) {
 			JSONError(w, "Failed to decode request body", http.StatusBadRequest)
 			return
 		}
-		saveCart(userID, newEntries)
+		if err := saveCart(userID, newEntries); err != nil {
+			JSONError(w, "Failed to save cart", http.StatusInternalServerError)
+			return
+		}
 		w.WriteHeader(http.StatusOK)
 		if _, err := fmt.Fprintf(w, "Cart updated successfully"); err != nil {
 			log.Printf("Failed to write cart update response: %v", err)

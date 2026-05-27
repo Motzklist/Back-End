@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"strconv"
 )
 
 func getSchoolsHandler(w http.ResponseWriter, r *http.Request) {
@@ -30,6 +31,10 @@ func getGradesHandler(w http.ResponseWriter, r *http.Request) {
 	// 1. Input Validation: Check if the required parameter is missing
 	if schoolID == "" {
 		JSONError(w, "Missing required query parameter: school_id", http.StatusBadRequest)
+		return
+	}
+	if _, err := strconv.Atoi(schoolID); err != nil {
+		JSONError(w, "school_id must be an integer", http.StatusBadRequest)
 		return
 	}
 
@@ -61,6 +66,14 @@ func getEquipmentListsHandler(w http.ResponseWriter, r *http.Request) {
 	// 1. Input Validation (updated)
 	if schoolID == "" || gradeID == "" {
 		JSONError(w, "Missing required query parameters: school_id or grade_id", http.StatusBadRequest)
+		return
+	}
+	if _, err := strconv.Atoi(schoolID); err != nil {
+		JSONError(w, "school_id must be an integer", http.StatusBadRequest)
+		return
+	}
+	if _, err := strconv.Atoi(gradeID); err != nil {
+		JSONError(w, "grade_id must be an integer", http.StatusBadRequest)
 		return
 	}
 

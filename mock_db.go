@@ -24,20 +24,20 @@ var MockGrades = []Grade{
 var MockEquipmentLists = map[string][]Equipment{
 	// Example: List for Ben Gurion (1), 9th Grade (9)
 	"1-9": {
-		{"101", "Notebook (Ruled)", 5, 5},
-		{"102", "Pencil", 12, 3},
-		{"103", "Math Textbook - Algebra I", 1, 40},
+		{ID: "101", Name: "Notebook (Ruled)", Quantity: 5, Price: 2.50},
+		{ID: "102", Name: "Pencil", Quantity: 12, Price: 0.50},
+		{ID: "103", Name: "Math Textbook - Algebra I", Quantity: 1, Price: 45.00},
 	},
 	// Example: List for ORT (2), 12th Grade (12)
 	"2-12": {
-		{"201", "Laptop (Required)", 1, 3000},
-		{"202", "Engineering Calculator", 1, 150},
-		{"203", "Physics Textbook - Advanced", 1, 80},
+		{ID: "201", Name: "Laptop (Required)", Quantity: 1, Price: 800.00},
+		{ID: "202", Name: "Engineering Calculator", Quantity: 1, Price: 35.00},
+		{ID: "203", Name: "Physics Textbook - Advanced", Quantity: 1, Price: 60.00},
 	},
 	// Default list for all other combinations
 	"default": {
-		{"901", "Binder (3-ring)", 2, 5},
-		{"902", "Highlighters", 4, 5},
+		{ID: "901", Name: "Binder (3-ring)", Quantity: 2, Price: 5.00},
+		{ID: "902", Name: "Highlighters", Quantity: 4, Price: 1.50},
 	},
 }
 
