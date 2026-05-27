@@ -1,13 +1,13 @@
 package main
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"log"
-	"math/rand"
 	"net/http"
 	"os"
-	"time"
 
 	"github.com/joho/godotenv"
 )
@@ -15,13 +15,11 @@ import (
 var sessions = map[string]string{} // sessionID -> userID
 
 func generateSessionID() string {
-	rand.New(rand.NewSource(time.Now().UnixNano()))
-	const letters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 	b := make([]byte, 32)
-	for i := range b {
-		b[i] = letters[rand.Intn(len(letters))]
+	if _, err := rand.Read(b); err != nil {
+		log.Fatalf("Failed to generate session ID: %v", err)
 	}
-	return string(b)
+	return hex.EncodeToString(b)
 }
 
 // School structure
@@ -76,7 +74,7 @@ func enableCORS(next http.HandlerFunc) http.HandlerFunc {
 		}
 		// For production, use your real frontend URL above
 
-		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, OPTIONS")
 		// NEW - changing the value
 		w.Header().Set(
 			"Access-Control-Allow-Headers",

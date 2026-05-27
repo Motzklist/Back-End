@@ -37,7 +37,17 @@ func CreateCheckoutSession(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if req.ProductName == "" || req.Quantity <= 0 || req.Amount <= 0 {
+		JSONError(w, "productName, quantity, and amount must be provided and positive", http.StatusBadRequest)
+		return
+	}
+
 	frontendURL := os.Getenv("FRONTEND_URL")
+	if frontendURL == "" {
+		log.Println("FRONTEND_URL is not configured")
+		JSONError(w, "Server misconfigured: FRONTEND_URL is not set", http.StatusInternalServerError)
+		return
+	}
 
 	params := &stripe.CheckoutSessionParams{
 		SuccessURL: stripe.String(frontendURL + "/payment/success?session_id={CHECKOUT_SESSION_ID}"),
