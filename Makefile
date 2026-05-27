@@ -1,18 +1,15 @@
-# Makefile for api-gateway-avner
-
 BINARY_NAME=motzklist-api-gateway
 BUILD_DIR=./build
-SRC_DIR=./
 
-# Default command: runs the server
+# Default command: runs the server (using '.' to include all files in package)
 .PHONY: run
 run:
-	go run $(SRC_DIR)main.go
+	go run .
 
-# Builds the binary
+# Builds the binary (using '.' to include all files in package)
 .PHONY: build
 build:
-	go build -o $(BUILD_DIR)/$(BINARY_NAME) $(SRC_DIR)main.go
+	go build -o $(BUILD_DIR)/$(BINARY_NAME) .
 
 # Cleans up the build directory
 .PHONY: clean
@@ -23,3 +20,12 @@ clean:
 .PHONY: deps
 deps:
 	go mod download
+
+# Runs tests
+.PHONY: test
+test:
+	@if command -v gotestsum > /dev/null; then \
+		gotestsum --format testname ./...; \
+	else \
+		go test -v ./...; \
+	fi
