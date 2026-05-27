@@ -13,7 +13,7 @@ import (
 var DB *sql.DB
 
 func InitDB() {
-	connStr := "host=database user=user password=password dbname=motzklist_db sslmode=disable"
+	connStr := "host=database user=user password=user dbname=motzklist_db sslmode=disable"
 	var err error
 
 	// Try to connect 5 times with a 2-second sleep between attempts
@@ -171,7 +171,7 @@ func getCartItemsFromApply(ceidStr string) []Equipment {
 	ceid, _ := strconv.Atoi(ceidStr)
 
 	query := `
-		SELECT e.eid, e.ename,, e.price COUNT(a.eid) as qty
+		SELECT e.eid, e.ename, e.price, COUNT(a.eid) as qty
 		FROM apply a
 		JOIN equipment e ON a.eid = e.eid
 		WHERE a.ceid = $1

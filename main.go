@@ -109,7 +109,7 @@ func main() {
 	http.HandleFunc("/api/login", enableCORS(postLoginHandler))
 	http.HandleFunc("/api/logout", enableCORS(logoutHandler))
 	http.HandleFunc("/api/cart", enableCORS(getPostCartHandler))
-	http.HandleFunc("/create-checkout-session", enableCORS(CreateCheckoutSession))
+	http.HandleFunc("/api/create-checkout-session", enableCORS(CreateCheckoutSession))
 
 	// Start the API Gateway server
 	port := "8080" // Changed port to string without colon for easier fmt use
