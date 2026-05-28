@@ -84,21 +84,19 @@ var MockUsers = []User{
 // CartEntry structure for frontend compatibility
 // (matches what the frontend expects)
 type CartEntry struct {
-	ID        string      `json:"id"`
-	Timestamp int64       `json:"timestamp"`
-	School    School      `json:"school"`
-	Grade     Grade       `json:"grade"`
-	Items     []Equipment `json:"items"`
+	ID     string      `json:"id"`
+	School School      `json:"school"`
+	Grade  Grade       `json:"grade"`
+	Items  []Equipment `json:"items"`
 }
 
 // data for cart
 var MockCarts = map[string][]CartEntry{
 	"1": {
 		{
-			ID:        "cart-1",
-			Timestamp: 1700000000,
-			School:    School{ID: "1", Name: "Ben Gurion"},
-			Grade:     Grade{ID: "9", Name: "9th Grade"},
+			ID:     "cart-1",
+			School: School{ID: "1", Name: "Ben Gurion"},
+			Grade:  Grade{ID: "9", Name: "9th Grade"},
 			Items: []Equipment{
 				{ID: "101", Name: "Notebook", Quantity: 2},
 				{ID: "102", Name: "Engineering Calculator", Quantity: 1},
@@ -108,10 +106,9 @@ var MockCarts = map[string][]CartEntry{
 	},
 	"2": {
 		{
-			ID:        "cart-2",
-			Timestamp: 1700000001,
-			School:    School{ID: "2", Name: "ORT"},
-			Grade:     Grade{ID: "12", Name: "12th Grade"},
+			ID:     "cart-2",
+			School: School{ID: "2", Name: "ORT"},
+			Grade:  Grade{ID: "12", Name: "12th Grade"},
 			Items: []Equipment{
 				{ID: "201", Name: "Laptop (Required)", Quantity: 1},
 				{ID: "202", Name: "Engineering Calculator", Quantity: 1},
