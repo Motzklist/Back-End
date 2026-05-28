@@ -338,7 +338,7 @@ func getOrderHistoryHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	cookie, err := r.Cookie("session_id")
+	cookie, err := r.Cookie("sessionid")
 	if err != nil {
 		JSONError(w, "Unauthorized", http.StatusUnauthorized)
 		return
