@@ -153,7 +153,7 @@ func getCartByUserID(userID string) []CartEntry {
 	var cart []CartEntry
 	queryEntry := `
 		SELECT ce.ceid, g.gid, g.gname, s.sid, s.sname
-		FROM cartEntry ce
+		FROM cart_entry ce
 		JOIN grade g ON ce.gid = g.gid
 		JOIN school s ON g.sid = s.sid
 		WHERE ce.uid = $1
@@ -186,10 +186,10 @@ func getCartItemsFromApply(ceidStr string) []Equipment {
 	ceid, _ := strconv.Atoi(ceidStr)
 
 	query := `
-		SELECT e.eid, e.ename, e.price, COUNT(a.eid) as qty
-		FROM apply a
-		JOIN equipment e ON a.eid = e.eid
-		WHERE a.ceid = $1
+		SELECT e.eid, e.ename, e.price, COUNT(ci.eid) as qty
+		FROM cart_item ci
+		JOIN equipment e ON ci.eid = e.eid
+		WHERE ci.ceid = $1
 		GROUP BY e.eid, e.ename, e.price
 	`
 	rows, err := DB.Query(query, ceid)
@@ -219,7 +219,7 @@ func saveCart(userID string, cart []CartEntry) error {
 		return fmt.Errorf("starting transaction: %w", err)
 	}
 
-	_, err = tx.Exec("DELETE FROM cartEntry WHERE uid = $1", uid)
+	_, err = tx.Exec("DELETE FROM cart_entry WHERE uid = $1", uid)
 	if err != nil {
 		tx.Rollback()
 		log.Println("Error clearing old cart:", err)
@@ -230,22 +230,22 @@ func saveCart(userID string, cart []CartEntry) error {
 		var newCeid int
 		gid, _ := strconv.Atoi(entry.Grade.ID)
 
-		err := tx.QueryRow("INSERT INTO cartEntry (gid, uid) VALUES ($1, $2) RETURNING ceid", gid, uid).Scan(&newCeid)
+		err := tx.QueryRow("INSERT INTO cart_entry (gid, uid) VALUES ($1, $2) RETURNING ceid", gid, uid).Scan(&newCeid)
 		if err != nil {
 			tx.Rollback()
-			log.Println("Error inserting cartEntry:", err)
-			return fmt.Errorf("inserting cartEntry: %w", err)
+			log.Println("Error inserting cart_entry:", err)
+			return fmt.Errorf("inserting cart_entry: %w", err)
 		}
 
 		for _, item := range entry.Items {
 			eid, _ := strconv.Atoi(item.ID)
 
 			for i := 0; i < item.Quantity; i++ {
-				_, err := tx.Exec("INSERT INTO apply (ceid, eid) VALUES ($1, $2)", newCeid, eid)
+				_, err := tx.Exec("INSERT INTO cart_item (ceid, eid) VALUES ($1, $2)", newCeid, eid)
 				if err != nil {
 					tx.Rollback()
-					log.Println("Error inserting to apply:", err)
-					return fmt.Errorf("inserting to apply: %w", err)
+					log.Println("Error inserting to cart_item:", err)
+					return fmt.Errorf("inserting to cart_item: %w", err)
 				}
 			}
 		}

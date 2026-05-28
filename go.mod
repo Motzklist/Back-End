@@ -1,4 +1,4 @@
-module api-gateway-avner
+module motzklist-backend
 
 go 1.25.4
 
