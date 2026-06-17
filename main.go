@@ -124,6 +124,39 @@ func main() {
 	http.HandleFunc("/api/create-checkout-session", enableCORS(CreateCheckoutSession))
 	http.HandleFunc("/api/history", enableCORS(getOrderHistoryHandler))
 
+	// Admin API (consumed by the Admin Front-End via its /api/* proxy). All
+	// require a valid sessionid session. Method-routed patterns (Go 1.22+).
+	// Schools
+	http.HandleFunc("POST /api/admin/schools", enableCORS(createSchoolHandler))
+	http.HandleFunc("GET /api/admin/schools/{id}", enableCORS(getSchoolHandler))
+	http.HandleFunc("PUT /api/admin/schools/{id}", enableCORS(updateSchoolHandler))
+	http.HandleFunc("DELETE /api/admin/schools/{id}", enableCORS(deleteSchoolHandler))
+	// Grades
+	http.HandleFunc("POST /api/admin/grades", enableCORS(createGradeHandler))
+	http.HandleFunc("GET /api/admin/grades/{id}", enableCORS(getGradeHandler))
+	http.HandleFunc("PUT /api/admin/grades/{id}", enableCORS(updateGradeHandler))
+	http.HandleFunc("DELETE /api/admin/grades/{id}", enableCORS(deleteGradeHandler))
+	http.HandleFunc("GET /api/admin/grades/{id}/requirements", enableCORS(getRequirementsHandler))
+	http.HandleFunc("PUT /api/admin/grades/{id}/requirements", enableCORS(putRequirementsHandler))
+	// Equipment catalog
+	http.HandleFunc("GET /api/admin/equipment", enableCORS(listCatalogHandler))
+	http.HandleFunc("POST /api/admin/equipment", enableCORS(createCatalogHandler))
+	http.HandleFunc("GET /api/admin/equipment/{id}", enableCORS(getCatalogHandler))
+	http.HandleFunc("PUT /api/admin/equipment/{id}", enableCORS(updateCatalogHandler))
+	http.HandleFunc("DELETE /api/admin/equipment/{id}", enableCORS(deleteCatalogHandler))
+	// Parent users
+	http.HandleFunc("GET /api/admin/users", enableCORS(listParentsHandler))
+	http.HandleFunc("POST /api/admin/users", enableCORS(createParentHandler))
+	http.HandleFunc("PUT /api/admin/users/{id}", enableCORS(updateParentHandler))
+	http.HandleFunc("DELETE /api/admin/users/{id}", enableCORS(deleteParentHandler))
+	// Orders (read-only)
+	http.HandleFunc("GET /api/admin/orders", enableCORS(listOrdersHandler))
+	http.HandleFunc("GET /api/admin/orders/{id}", enableCORS(getOrderHandler))
+	// Analytics
+	http.HandleFunc("GET /api/admin/analytics/summary", enableCORS(analyticsSummaryHandler))
+	// CSV import
+	http.HandleFunc("POST /api/admin/import", enableCORS(importHandler))
+
 	// Start the API Gateway server
 	port := "8080" // Changed port to string without colon for easier fmt use
 	// Using fmt.Sprintf to format the port with a colon for ListenAndServe

@@ -22,6 +22,7 @@ func authStatusHandler(w http.ResponseWriter, r *http.Request) {
 
 	var username = getUsernameFromUserID(userID)
 	if username != "" {
+		w.Header().Set("Content-Type", "application/json")
 		err := json.NewEncoder(w).Encode(map[string]string{"userid": userID, "username": username})
 		if err != nil {
 			log.Printf("Failed to encode auth status response: %v", err)
@@ -66,6 +67,7 @@ func postLoginHandler(w http.ResponseWriter, r *http.Request) {
 			//Secure: true, // Uncomment this line if using HTTPS
 			//SameSite: http.SameSiteStrictMode,
 		})
+		w.Header().Set("Content-Type", "application/json")
 		err := json.NewEncoder(w).Encode(map[string]string{"userid": userId, "username": credentials.Username})
 		if err != nil {
 			log.Printf("Failed to encode login response: %v", err)
