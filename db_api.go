@@ -40,6 +40,7 @@ func InitDB() {
 			err = DB.Ping()
 			if err == nil {
 				fmt.Println("Connected to Database successfully!")
+				runMigrations()
 				return
 			}
 		}
@@ -48,6 +49,21 @@ func InitDB() {
 	}
 
 	log.Fatal("Could not connect to database after 5 attempts:", err)
+}
+
+// runMigrations applies idempotent schema tweaks at startup. The base schema is
+// created from Database/init.sql only on a fresh data volume, so additive
+// columns introduced later are added here to keep existing databases in sync.
+func runMigrations() {
+	stmts := []string{
+		`ALTER TABLE orders ADD COLUMN IF NOT EXISTS stripe_session_id TEXT`,
+		`ALTER TABLE orders ADD COLUMN IF NOT EXISTS stripe_payment_intent TEXT`,
+	}
+	for _, stmt := range stmts {
+		if _, err := DB.Exec(stmt); err != nil {
+			log.Printf("Migration failed (%s): %v", stmt, err)
+		}
+	}
 }
 
 // --- Implementation ---

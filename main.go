@@ -156,6 +156,12 @@ func main() {
 	http.HandleFunc("GET /api/admin/analytics/summary", enableCORS(analyticsSummaryHandler))
 	// CSV import
 	http.HandleFunc("POST /api/admin/import", enableCORS(importHandler))
+	// Stripe: admin reads/control (session-guarded) + webhook (signature-verified,
+	// called server-to-server by Stripe, so no CORS/session wrapper).
+	http.HandleFunc("GET /api/admin/payments", enableCORS(listPaymentsHandler))
+	http.HandleFunc("GET /api/admin/payments/balance", enableCORS(getBalanceHandler))
+	http.HandleFunc("POST /api/admin/payments/{id}/refund", enableCORS(refundPaymentHandler))
+	http.HandleFunc("POST /api/stripe/webhook", stripeWebhookHandler)
 
 	// Start the API Gateway server
 	port := "8080" // Changed port to string without colon for easier fmt use
