@@ -2,8 +2,10 @@ package main
 
 import (
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"log"
+	"net/http"
 	"os"
 	"strconv"
 	"time"
@@ -153,7 +155,7 @@ func getCartByUserID(userID string) []CartEntry {
 	var cart []CartEntry
 	queryEntry := `
 		SELECT ce.ceid, g.gid, g.gname, s.sid, s.sname
-		FROM cartEntry ce
+		FROM cart_entry ce
 		JOIN grade g ON ce.gid = g.gid
 		JOIN school s ON g.sid = s.sid
 		WHERE ce.uid = $1
@@ -186,10 +188,10 @@ func getCartItemsFromApply(ceidStr string) []Equipment {
 	ceid, _ := strconv.Atoi(ceidStr)
 
 	query := `
-		SELECT e.eid, e.ename, e.price, COUNT(a.eid) as qty
-		FROM apply a
-		JOIN equipment e ON a.eid = e.eid
-		WHERE a.ceid = $1
+		SELECT e.eid, e.ename, e.price, COUNT(ci.eid) as qty
+		FROM cart_item ci
+		JOIN equipment e ON ci.eid = e.eid
+		WHERE ci.ceid = $1
 		GROUP BY e.eid, e.ename, e.price
 	`
 	rows, err := DB.Query(query, ceid)
@@ -219,7 +221,7 @@ func saveCart(userID string, cart []CartEntry) error {
 		return fmt.Errorf("starting transaction: %w", err)
 	}
 
-	_, err = tx.Exec("DELETE FROM cartEntry WHERE uid = $1", uid)
+	_, err = tx.Exec("DELETE FROM cart_entry WHERE uid = $1", uid)
 	if err != nil {
 		tx.Rollback()
 		log.Println("Error clearing old cart:", err)
@@ -230,22 +232,22 @@ func saveCart(userID string, cart []CartEntry) error {
 		var newCeid int
 		gid, _ := strconv.Atoi(entry.Grade.ID)
 
-		err := tx.QueryRow("INSERT INTO cartEntry (gid, uid) VALUES ($1, $2) RETURNING ceid", gid, uid).Scan(&newCeid)
+		err := tx.QueryRow("INSERT INTO cart_entry (gid, uid) VALUES ($1, $2) RETURNING ceid", gid, uid).Scan(&newCeid)
 		if err != nil {
 			tx.Rollback()
-			log.Println("Error inserting cartEntry:", err)
-			return fmt.Errorf("inserting cartEntry: %w", err)
+			log.Println("Error inserting cart_entry:", err)
+			return fmt.Errorf("inserting cart_entry: %w", err)
 		}
 
 		for _, item := range entry.Items {
 			eid, _ := strconv.Atoi(item.ID)
 
 			for i := 0; i < item.Quantity; i++ {
-				_, err := tx.Exec("INSERT INTO apply (ceid, eid) VALUES ($1, $2)", newCeid, eid)
+				_, err := tx.Exec("INSERT INTO cart_item (ceid, eid) VALUES ($1, $2)", newCeid, eid)
 				if err != nil {
 					tx.Rollback()
-					log.Println("Error inserting to apply:", err)
-					return fmt.Errorf("inserting to apply: %w", err)
+					log.Println("Error inserting to cart_item:", err)
+					return fmt.Errorf("inserting to cart_item: %w", err)
 				}
 			}
 		}
@@ -256,4 +258,102 @@ func saveCart(userID string, cart []CartEntry) error {
 		return fmt.Errorf("committing transaction: %w", err)
 	}
 	return nil
+}
+
+// NEW - adding purchase history
+func getUserOrderHistory(userID string) []Order {
+	log.Println("Got to getUserOrderHistory function")
+	uid, _ := strconv.Atoi(userID)
+	var orders []Order
+
+	queryOrders := `
+       SELECT oid, gid, purchase_date, total_amount
+       FROM orders
+       WHERE uid = $1
+       ORDER BY purchase_date DESC;
+    `
+	rows, err := DB.Query(queryOrders, uid)
+	if err != nil {
+		log.Println("Error getting orders history:", err)
+		return []Order{}
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var o Order
+		var t time.Time
+
+		if err := rows.Scan(&o.ID, &o.GradeID, &t, &o.TotalAmount); err != nil {
+			log.Println("Error scanning order row:", err)
+			continue
+		}
+
+		o.PurchaseDate = t.Format("2006-01-02 15:04:05")
+
+		o.Items = getOrderItems(o.ID)
+
+		orders = append(orders, o)
+	}
+
+	return orders
+}
+
+func getOrderItems(orderID string) []OrderItem {
+	oid, _ := strconv.Atoi(orderID)
+	var items []OrderItem
+
+	queryItems := `
+       SELECT
+          e.ename,
+          oi.quantity,
+          oi.price_at_purchase,
+          (oi.quantity * oi.price_at_purchase) as total_item_cost
+       FROM order_item oi
+       JOIN equipment e ON oi.eid = e.eid
+       WHERE oi.oid = $1;
+    `
+	rows, err := DB.Query(queryItems, oid)
+	if err != nil {
+		log.Println("Error getting order items:", err)
+		return []OrderItem{}
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var item OrderItem
+
+		if err := rows.Scan(&item.EquipmentName, &item.Quantity, &item.Price, &item.TotalPrice); err != nil {
+			log.Println("Error scanning order item row:", err)
+			continue
+		}
+		items = append(items, item)
+	}
+
+	return items
+}
+
+func getOrderHistoryHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		JSONError(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	cookie, err := r.Cookie("sessionid")
+	if err != nil {
+		JSONError(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	userID, exists := sessions[cookie.Value]
+	if !exists {
+		JSONError(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	history := getUserOrderHistory(userID)
+
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(history); err != nil {
+		log.Printf("Failed to encode history response: %v", err)
+	}
 }
