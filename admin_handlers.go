@@ -27,12 +27,14 @@ type AdminGrade struct {
 	ID       string `json:"id"`
 	SchoolID string `json:"schoolId"`
 	Name     string `json:"name"`
+	NameHe   string `json:"nameHe,omitempty"`
 }
 
 type CatalogItem struct {
-	ID    string  `json:"id"`
-	Name  string  `json:"name"`
-	Price float64 `json:"price"`
+	ID     string  `json:"id"`
+	Name   string  `json:"name"`
+	NameHe string  `json:"nameHe,omitempty"`
+	Price  float64 `json:"price"`
 }
 
 type RequirementItem struct {
@@ -117,6 +119,16 @@ type ImportResult struct {
 // Helpers
 // ---------------------------------------------------------------------------
 
+// emptyToNull maps an empty string to a SQL NULL so optional translation
+// columns stay NULL (and thus fall back to the base name via localizedName)
+// rather than storing an empty string.
+func emptyToNull(s string) any {
+	if s == "" {
+		return nil
+	}
+	return s
+}
+
 // writeJSON encodes v as the response body with the given status code.
 func writeJSON(w http.ResponseWriter, code int, v any) {
 	w.Header().Set("Content-Type", "application/json")
@@ -160,7 +172,8 @@ func createSchoolHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var body struct {
-		Name string `json:"name"`
+		Name   string `json:"name"`
+		NameHe string `json:"nameHe"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		JSONError(w, "Invalid request body", http.StatusBadRequest)
@@ -171,8 +184,12 @@ func createSchoolHandler(w http.ResponseWriter, r *http.Request) {
 		JSONError(w, "School name is required", http.StatusBadRequest)
 		return
 	}
+	nameHe := strings.TrimSpace(body.NameHe)
 	var s School
-	err := DB.QueryRow("INSERT INTO school (sname) VALUES ($1) RETURNING sid, sname", name).Scan(&s.ID, &s.Name)
+	err := DB.QueryRow(
+		"INSERT INTO school (sname, sname_he) VALUES ($1, $2) RETURNING sid, sname, COALESCE(sname_he, '')",
+		name, emptyToNull(nameHe),
+	).Scan(&s.ID, &s.Name, &s.NameHe)
 	if err != nil {
 		log.Printf("createSchool: %v", err)
 		JSONError(w, "Failed to create school", http.StatusInternalServerError)
@@ -190,7 +207,7 @@ func getSchoolHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var s School
-	err := DB.QueryRow("SELECT sid, sname FROM school WHERE sid = $1", id).Scan(&s.ID, &s.Name)
+	err := DB.QueryRow("SELECT sid, sname, COALESCE(sname_he, '') FROM school WHERE sid = $1", id).Scan(&s.ID, &s.Name, &s.NameHe)
 	if err == sql.ErrNoRows {
 		JSONError(w, "School not found", http.StatusNotFound)
 		return
@@ -212,7 +229,8 @@ func updateSchoolHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var body struct {
-		Name string `json:"name"`
+		Name   string  `json:"name"`
+		NameHe *string `json:"nameHe"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		JSONError(w, "Invalid request body", http.StatusBadRequest)
@@ -224,7 +242,20 @@ func updateSchoolHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var s School
-	err := DB.QueryRow("UPDATE school SET sname = $1 WHERE sid = $2 RETURNING sid, sname", name, id).Scan(&s.ID, &s.Name)
+	var err error
+	// Only touch sname_he when the caller actually sent a nameHe field, so
+	// existing translations are preserved on name-only updates.
+	if body.NameHe != nil {
+		err = DB.QueryRow(
+			"UPDATE school SET sname = $1, sname_he = $2 WHERE sid = $3 RETURNING sid, sname, COALESCE(sname_he, '')",
+			name, emptyToNull(strings.TrimSpace(*body.NameHe)), id,
+		).Scan(&s.ID, &s.Name, &s.NameHe)
+	} else {
+		err = DB.QueryRow(
+			"UPDATE school SET sname = $1 WHERE sid = $2 RETURNING sid, sname, COALESCE(sname_he, '')",
+			name, id,
+		).Scan(&s.ID, &s.Name, &s.NameHe)
+	}
 	if err == sql.ErrNoRows {
 		JSONError(w, "School not found", http.StatusNotFound)
 		return
@@ -269,6 +300,7 @@ func createGradeHandler(w http.ResponseWriter, r *http.Request) {
 	var body struct {
 		SchoolID string `json:"schoolId"`
 		Name     string `json:"name"`
+		NameHe   string `json:"nameHe"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		JSONError(w, "Invalid request body", http.StatusBadRequest)
@@ -296,9 +328,9 @@ func createGradeHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	var g AdminGrade
 	err = DB.QueryRow(
-		"INSERT INTO grade (sid, gname) VALUES ($1, $2) RETURNING gid, sid, gname",
-		schoolID, name,
-	).Scan(&g.ID, &g.SchoolID, &g.Name)
+		"INSERT INTO grade (sid, gname, gname_he) VALUES ($1, $2, $3) RETURNING gid, sid, gname, COALESCE(gname_he, '')",
+		schoolID, name, emptyToNull(strings.TrimSpace(body.NameHe)),
+	).Scan(&g.ID, &g.SchoolID, &g.Name, &g.NameHe)
 	if err != nil {
 		log.Printf("createGrade: %v", err)
 		JSONError(w, "Failed to create grade", http.StatusInternalServerError)
@@ -316,7 +348,7 @@ func getGradeHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var g AdminGrade
-	err := DB.QueryRow("SELECT gid, sid, gname FROM grade WHERE gid = $1", id).Scan(&g.ID, &g.SchoolID, &g.Name)
+	err := DB.QueryRow("SELECT gid, sid, gname, COALESCE(gname_he, '') FROM grade WHERE gid = $1", id).Scan(&g.ID, &g.SchoolID, &g.Name, &g.NameHe)
 	if err == sql.ErrNoRows {
 		JSONError(w, "Grade not found", http.StatusNotFound)
 		return
@@ -338,7 +370,8 @@ func updateGradeHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var body struct {
-		Name string `json:"name"`
+		Name   string  `json:"name"`
+		NameHe *string `json:"nameHe"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		JSONError(w, "Invalid request body", http.StatusBadRequest)
@@ -350,10 +383,20 @@ func updateGradeHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var g AdminGrade
-	err := DB.QueryRow(
-		"UPDATE grade SET gname = $1 WHERE gid = $2 RETURNING gid, sid, gname",
-		name, id,
-	).Scan(&g.ID, &g.SchoolID, &g.Name)
+	var err error
+	// Only touch gname_he when the caller sent a nameHe field, preserving any
+	// existing translation on name-only updates.
+	if body.NameHe != nil {
+		err = DB.QueryRow(
+			"UPDATE grade SET gname = $1, gname_he = $2 WHERE gid = $3 RETURNING gid, sid, gname, COALESCE(gname_he, '')",
+			name, emptyToNull(strings.TrimSpace(*body.NameHe)), id,
+		).Scan(&g.ID, &g.SchoolID, &g.Name, &g.NameHe)
+	} else {
+		err = DB.QueryRow(
+			"UPDATE grade SET gname = $1 WHERE gid = $2 RETURNING gid, sid, gname, COALESCE(gname_he, '')",
+			name, id,
+		).Scan(&g.ID, &g.SchoolID, &g.Name, &g.NameHe)
+	}
 	if err == sql.ErrNoRows {
 		JSONError(w, "Grade not found", http.StatusNotFound)
 		return
@@ -549,7 +592,7 @@ func listCatalogHandler(w http.ResponseWriter, r *http.Request) {
 	if _, ok := requireSession(w, r); !ok {
 		return
 	}
-	rows, err := DB.Query("SELECT eid, ename, price FROM equipment ORDER BY eid")
+	rows, err := DB.Query("SELECT eid, ename, COALESCE(ename_he, ''), price FROM equipment ORDER BY eid")
 	if err != nil {
 		log.Printf("listCatalog: %v", err)
 		JSONError(w, "Failed to load equipment", http.StatusInternalServerError)
@@ -560,7 +603,7 @@ func listCatalogHandler(w http.ResponseWriter, r *http.Request) {
 	items := []CatalogItem{}
 	for rows.Next() {
 		var e CatalogItem
-		if err := rows.Scan(&e.ID, &e.Name, &e.Price); err != nil {
+		if err := rows.Scan(&e.ID, &e.Name, &e.NameHe, &e.Price); err != nil {
 			log.Printf("listCatalog(scan): %v", err)
 			continue
 		}
@@ -574,8 +617,9 @@ func createCatalogHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var body struct {
-		Name  string  `json:"name"`
-		Price float64 `json:"price"`
+		Name   string  `json:"name"`
+		NameHe string  `json:"nameHe"`
+		Price  float64 `json:"price"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		JSONError(w, "Invalid request body", http.StatusBadRequest)
@@ -592,9 +636,9 @@ func createCatalogHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	var e CatalogItem
 	err := DB.QueryRow(
-		"INSERT INTO equipment (ename, price) VALUES ($1, $2) RETURNING eid, ename, price",
-		name, body.Price,
-	).Scan(&e.ID, &e.Name, &e.Price)
+		"INSERT INTO equipment (ename, ename_he, price) VALUES ($1, $2, $3) RETURNING eid, ename, COALESCE(ename_he, ''), price",
+		name, emptyToNull(strings.TrimSpace(body.NameHe)), body.Price,
+	).Scan(&e.ID, &e.Name, &e.NameHe, &e.Price)
 	if err != nil {
 		log.Printf("createCatalog: %v", err)
 		JSONError(w, "Failed to create equipment", http.StatusInternalServerError)
@@ -612,7 +656,7 @@ func getCatalogHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var e CatalogItem
-	err := DB.QueryRow("SELECT eid, ename, price FROM equipment WHERE eid = $1", id).Scan(&e.ID, &e.Name, &e.Price)
+	err := DB.QueryRow("SELECT eid, ename, COALESCE(ename_he, ''), price FROM equipment WHERE eid = $1", id).Scan(&e.ID, &e.Name, &e.NameHe, &e.Price)
 	if err == sql.ErrNoRows {
 		JSONError(w, "Equipment not found", http.StatusNotFound)
 		return
@@ -634,8 +678,9 @@ func updateCatalogHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var body struct {
-		Name  *string  `json:"name"`
-		Price *float64 `json:"price"`
+		Name   *string  `json:"name"`
+		NameHe *string  `json:"nameHe"`
+		Price  *float64 `json:"price"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		JSONError(w, "Invalid request body", http.StatusBadRequest)
@@ -644,7 +689,7 @@ func updateCatalogHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Load current values, then apply whichever fields were provided.
 	var e CatalogItem
-	err := DB.QueryRow("SELECT eid, ename, price FROM equipment WHERE eid = $1", id).Scan(&e.ID, &e.Name, &e.Price)
+	err := DB.QueryRow("SELECT eid, ename, COALESCE(ename_he, ''), price FROM equipment WHERE eid = $1", id).Scan(&e.ID, &e.Name, &e.NameHe, &e.Price)
 	if err == sql.ErrNoRows {
 		JSONError(w, "Equipment not found", http.StatusNotFound)
 		return
@@ -662,6 +707,9 @@ func updateCatalogHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		e.Name = name
 	}
+	if body.NameHe != nil {
+		e.NameHe = strings.TrimSpace(*body.NameHe)
+	}
 	if body.Price != nil {
 		if *body.Price < 0 {
 			JSONError(w, "Price must be zero or greater", http.StatusBadRequest)
@@ -669,7 +717,7 @@ func updateCatalogHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		e.Price = *body.Price
 	}
-	if _, err := DB.Exec("UPDATE equipment SET ename = $1, price = $2 WHERE eid = $3", e.Name, e.Price, id); err != nil {
+	if _, err := DB.Exec("UPDATE equipment SET ename = $1, ename_he = $2, price = $3 WHERE eid = $4", e.Name, emptyToNull(e.NameHe), e.Price, id); err != nil {
 		log.Printf("updateCatalog: %v", err)
 		JSONError(w, "Failed to update equipment", http.StatusInternalServerError)
 		return

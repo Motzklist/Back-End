@@ -26,6 +26,10 @@ func generateSessionID() string {
 type School struct {
 	ID   string `json:"id"` // Fix C: Changed single quotes to backticks (`)
 	Name string `json:"name"`
+	// NameHe is the Hebrew translation of the school name. Omitted from the
+	// public responses (which already localize Name) but populated by the admin
+	// endpoints so translations can be managed.
+	NameHe string `json:"nameHe,omitempty"`
 }
 
 type Grade struct {
