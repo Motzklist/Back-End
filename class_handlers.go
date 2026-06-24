@@ -11,7 +11,7 @@ func getSchoolsHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
 	// LATER: connect to database, extract corresponding list and parse it
-	schools := getSchools()
+	schools := getSchools(parseLang(r))
 
 	// Convert to Json
 	if err := json.NewEncoder(w).Encode(schools); err != nil {
@@ -45,7 +45,7 @@ func getGradesHandler(w http.ResponseWriter, r *http.Request) {
 
 	// LATER: connect to database, extract corresponding list and parse it
 
-	grades := getGrades(schoolID)
+	grades := getGrades(schoolID, parseLang(r))
 
 	// Convert to Json
 	if err := json.NewEncoder(w).Encode(grades); err != nil {
@@ -80,7 +80,7 @@ func getEquipmentListsHandler(w http.ResponseWriter, r *http.Request) {
 	log.Printf("Received request for equipment list: School=%s, Grade=%s", schoolID, gradeID)
 
 	// LATER: connect to database, extract corresponding list and parse it
-	equipment := getEquipment(schoolID, gradeID)
+	equipment := getEquipment(schoolID, gradeID, parseLang(r))
 
 	response := EquipmentListResponse{
 		Items: equipment,

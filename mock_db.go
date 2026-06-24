@@ -4,11 +4,11 @@ import "fmt"
 
 // Schools data (all possible schools)
 var MockSchools = []School{
-	{"1", "Ben Gurion"},
-	{"2", "ORT"},
-	{"3", "Brener"},
-	{"4", "Herzel"},
-	{"5", "Begin"},
+	{ID: "1", Name: "Ben Gurion"},
+	{ID: "2", Name: "ORT"},
+	{ID: "3", Name: "Brener"},
+	{ID: "4", Name: "Herzel"},
+	{ID: "5", Name: "Begin"},
 }
 
 // Grades data (9-12)

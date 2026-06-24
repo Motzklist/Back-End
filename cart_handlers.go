@@ -23,7 +23,7 @@ func getPostCartHandler(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodGet:
 		// Return existing cart (now returns []CartEntry)
-		cart := getCartByUserID(userID)
+		cart := getCartByUserID(userID, parseLang(r))
 		err := json.NewEncoder(w).Encode(cart)
 		if err != nil {
 			log.Printf("Failed to encode cart response: %v", err)
