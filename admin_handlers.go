@@ -167,6 +167,33 @@ func pathID(w http.ResponseWriter, r *http.Request) (int, bool) {
 // Schools
 // ---------------------------------------------------------------------------
 
+// listSchoolsHandler returns all schools with both the base and Hebrew names so
+// the admin panel can display/manage every language at once (the public
+// /api/schools endpoint only returns a single localized name).
+func listSchoolsHandler(w http.ResponseWriter, r *http.Request) {
+	if _, ok := requireSession(w, r); !ok {
+		return
+	}
+	rows, err := DB.Query("SELECT sid, sname, COALESCE(sname_he, '') FROM school ORDER BY sid")
+	if err != nil {
+		log.Printf("listSchools: %v", err)
+		JSONError(w, "Failed to load schools", http.StatusInternalServerError)
+		return
+	}
+	defer rows.Close()
+
+	schools := []School{}
+	for rows.Next() {
+		var s School
+		if err := rows.Scan(&s.ID, &s.Name, &s.NameHe); err != nil {
+			log.Printf("listSchools(scan): %v", err)
+			continue
+		}
+		schools = append(schools, s)
+	}
+	writeJSON(w, http.StatusOK, schools)
+}
+
 func createSchoolHandler(w http.ResponseWriter, r *http.Request) {
 	if _, ok := requireSession(w, r); !ok {
 		return
@@ -292,6 +319,41 @@ func deleteSchoolHandler(w http.ResponseWriter, r *http.Request) {
 // ---------------------------------------------------------------------------
 // Grades
 // ---------------------------------------------------------------------------
+
+// listGradesHandler returns a school's grades with both the base and Hebrew
+// names (the public /api/grades endpoint only returns a single localized name).
+func listGradesHandler(w http.ResponseWriter, r *http.Request) {
+	if _, ok := requireSession(w, r); !ok {
+		return
+	}
+	schoolID := r.URL.Query().Get("school_id")
+	if schoolID == "" {
+		JSONError(w, "Missing required query parameter: school_id", http.StatusBadRequest)
+		return
+	}
+	if _, err := strconv.Atoi(schoolID); err != nil {
+		JSONError(w, "school_id must be an integer", http.StatusBadRequest)
+		return
+	}
+	rows, err := DB.Query("SELECT gid, sid, gname, COALESCE(gname_he, '') FROM grade WHERE sid = $1 ORDER BY gid", schoolID)
+	if err != nil {
+		log.Printf("listGrades: %v", err)
+		JSONError(w, "Failed to load grades", http.StatusInternalServerError)
+		return
+	}
+	defer rows.Close()
+
+	grades := []AdminGrade{}
+	for rows.Next() {
+		var g AdminGrade
+		if err := rows.Scan(&g.ID, &g.SchoolID, &g.Name, &g.NameHe); err != nil {
+			log.Printf("listGrades(scan): %v", err)
+			continue
+		}
+		grades = append(grades, g)
+	}
+	writeJSON(w, http.StatusOK, grades)
+}
 
 func createGradeHandler(w http.ResponseWriter, r *http.Request) {
 	if _, ok := requireSession(w, r); !ok {

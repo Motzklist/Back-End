@@ -131,11 +131,13 @@ func main() {
 	// Admin API (consumed by the Admin Front-End via its /api/* proxy). All
 	// require a valid sessionid session. Method-routed patterns (Go 1.22+).
 	// Schools
+	http.HandleFunc("GET /api/admin/schools", enableCORS(listSchoolsHandler))
 	http.HandleFunc("POST /api/admin/schools", enableCORS(createSchoolHandler))
 	http.HandleFunc("GET /api/admin/schools/{id}", enableCORS(getSchoolHandler))
 	http.HandleFunc("PUT /api/admin/schools/{id}", enableCORS(updateSchoolHandler))
 	http.HandleFunc("DELETE /api/admin/schools/{id}", enableCORS(deleteSchoolHandler))
 	// Grades
+	http.HandleFunc("GET /api/admin/grades", enableCORS(listGradesHandler))
 	http.HandleFunc("POST /api/admin/grades", enableCORS(createGradeHandler))
 	http.HandleFunc("GET /api/admin/grades/{id}", enableCORS(getGradeHandler))
 	http.HandleFunc("PUT /api/admin/grades/{id}", enableCORS(updateGradeHandler))
