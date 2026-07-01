@@ -2,8 +2,10 @@ package main
 
 import (
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"log"
+	"net/http"
 	"os"
 	"strconv"
 	"time"
@@ -38,6 +40,7 @@ func InitDB() {
 			err = DB.Ping()
 			if err == nil {
 				fmt.Println("Connected to Database successfully!")
+				// runMigrations()
 				return
 			}
 		}
@@ -48,11 +51,87 @@ func InitDB() {
 	log.Fatal("Could not connect to database after 5 attempts:", err)
 }
 
+// runMigrations applies idempotent schema tweaks at startup. The base schema is
+// created from Database/init.sql only on a fresh data volume, so additive
+// columns introduced later are added here to keep existing databases in sync.
+// func runMigrations() {
+// 	stmts := []string{
+// 		`ALTER TABLE orders ADD COLUMN IF NOT EXISTS stripe_session_id TEXT`,
+// 		`ALTER TABLE orders ADD COLUMN IF NOT EXISTS stripe_payment_intent TEXT`,
+// 		// Multi-language support: Hebrew translation columns alongside the base
+// 		// (English) name columns. Nullable so untranslated rows fall back to the
+// 		// base name (see localizedName).
+// 		`ALTER TABLE school ADD COLUMN IF NOT EXISTS sname_he TEXT`,
+// 		`ALTER TABLE grade ADD COLUMN IF NOT EXISTS gname_he TEXT`,
+// 		`ALTER TABLE equipment ADD COLUMN IF NOT EXISTS ename_he TEXT`,
+// 	}
+// 	for _, stmt := range stmts {
+// 		if _, err := DB.Exec(stmt); err != nil {
+// 			log.Printf("Migration failed (%s): %v", stmt, err)
+// 		}
+// 	}
+// 	backfillHebrewSeedNames()
+// }
+
+// backfillHebrewSeedNames fills in Hebrew translations for the well-known seeded
+// rows on databases that were created before the *_he columns existed (the
+// seed.sql translations only run on a fresh data volume). Each statement is
+// guarded so it only writes when the translation is still missing, making this
+// idempotent and safe to run on every startup without clobbering admin edits.
+// func backfillHebrewSeedNames() {
+// 	stmts := []string{
+// 		`UPDATE school SET sname_he = 'בן גוריון' WHERE sname = 'Ben Gurion' AND (sname_he IS NULL OR sname_he = '')`,
+// 		`UPDATE school SET sname_he = 'אורט'      WHERE sname = 'ORT'        AND (sname_he IS NULL OR sname_he = '')`,
+// 		`UPDATE school SET sname_he = 'ברנר'      WHERE sname = 'Brener'     AND (sname_he IS NULL OR sname_he = '')`,
+// 		`UPDATE school SET sname_he = 'הרצל'      WHERE sname = 'Herzel'     AND (sname_he IS NULL OR sname_he = '')`,
+// 		`UPDATE school SET sname_he = 'בגין'      WHERE sname = 'Begin'      AND (sname_he IS NULL OR sname_he = '')`,
+// 		`UPDATE grade SET gname_he = 'כיתה ט''' WHERE gname = '9th Grade'  AND (gname_he IS NULL OR gname_he = '')`,
+// 		`UPDATE grade SET gname_he = 'כיתה י''' WHERE gname = '10th Grade' AND (gname_he IS NULL OR gname_he = '')`,
+// 		`UPDATE grade SET gname_he = 'כיתה י"א' WHERE gname = '11th Grade' AND (gname_he IS NULL OR gname_he = '')`,
+// 		`UPDATE grade SET gname_he = 'כיתה י"ב' WHERE gname = '12th Grade' AND (gname_he IS NULL OR gname_he = '')`,
+// 		`UPDATE equipment SET ename_he = 'מחברת (שורות)'           WHERE ename = 'Notebook (Ruled)'            AND (ename_he IS NULL OR ename_he = '')`,
+// 		`UPDATE equipment SET ename_he = 'עיפרון'                  WHERE ename = 'Pencil'                      AND (ename_he IS NULL OR ename_he = '')`,
+// 		`UPDATE equipment SET ename_he = 'ספר מתמטיקה - אלגברה א''' WHERE ename = 'Math Textbook - Algebra I'   AND (ename_he IS NULL OR ename_he = '')`,
+// 		`UPDATE equipment SET ename_he = 'מחשב נייד (חובה)'         WHERE ename = 'Laptop (Required)'           AND (ename_he IS NULL OR ename_he = '')`,
+// 		`UPDATE equipment SET ename_he = 'מחשבון הנדסי'            WHERE ename = 'Engineering Calculator'      AND (ename_he IS NULL OR ename_he = '')`,
+// 		`UPDATE equipment SET ename_he = 'ספר פיזיקה - מתקדם'       WHERE ename = 'Physics Textbook - Advanced'  AND (ename_he IS NULL OR ename_he = '')`,
+// 		`UPDATE equipment SET ename_he = 'קלסר (3 טבעות)'          WHERE ename = 'Binder (3-ring)'             AND (ename_he IS NULL OR ename_he = '')`,
+// 		`UPDATE equipment SET ename_he = 'מרקרים'                 WHERE ename = 'Highlighters'                AND (ename_he IS NULL OR ename_he = '')`,
+// 	}
+// 	for _, stmt := range stmts {
+// 		if _, err := DB.Exec(stmt); err != nil {
+// 			log.Printf("Hebrew seed backfill failed (%s): %v", stmt, err)
+// 		}
+// 	}
+// }
+
+// parseLang reads the requested UI language from the `lang` query parameter and
+// normalizes it to a language the backend can serve. Only "he" has translation
+// columns today; everything else (including an absent param) means English.
+func parseLang(r *http.Request) string {
+	if r.URL.Query().Get("lang") == "he" {
+		return "he"
+	}
+	return "en"
+}
+
+// localizedName builds a SQL scalar expression that selects the name column for
+// the given language, falling back to the base column when the translation is
+// missing/empty. base and he MUST be trusted column identifiers (never user
+// input) since they are interpolated directly into the query.
+func localizedName(base, he, lang string) string {
+	if lang == "he" {
+		return fmt.Sprintf("COALESCE(NULLIF(%s, ''), %s)", he, base)
+	}
+	return base
+}
+
 // --- Implementation ---
 
-func getSchools() []School {
+func getSchools(lang string) []School {
 	log.Println("Got to getSchools function")
-	rows, err := DB.Query("SELECT sid, sname FROM school")
+	query := fmt.Sprintf("SELECT sid, %s FROM school", localizedName("sname", "sname_he", lang))
+	rows, err := DB.Query(query)
 	if err != nil {
 		log.Println("Error getting schools:", err)
 		return []School{}
@@ -71,10 +150,11 @@ func getSchools() []School {
 	return schools
 }
 
-func getGrades(schoolID string) []Grade {
+func getGrades(schoolID string, lang string) []Grade {
 	log.Println("Got to getGrades function")
 	sid, _ := strconv.Atoi(schoolID)
-	rows, err := DB.Query("SELECT gid, gname FROM grade WHERE sid = $1", sid)
+	query := fmt.Sprintf("SELECT gid, %s FROM grade WHERE sid = $1", localizedName("gname", "gname_he", lang))
+	rows, err := DB.Query(query, sid)
 	if err != nil {
 		log.Println("Error getting grades:", err)
 		return []Grade{}
@@ -93,16 +173,16 @@ func getGrades(schoolID string) []Grade {
 	return grades
 }
 
-func getEquipment(schoolID string, gradeID string) []Equipment {
+func getEquipment(schoolID string, gradeID string, lang string) []Equipment {
 	log.Println("Got to getEquipment function")
 	gid, _ := strconv.Atoi(gradeID)
 
-	query := `
-		SELECT e.eid, e.ename, e.price, r.quantity
+	query := fmt.Sprintf(`
+		SELECT e.eid, %s, e.price, r.quantity
 		FROM equipment e
 		JOIN requirement r ON e.eid = r.eid
 		WHERE r.gid = $1
-	`
+	`, localizedName("e.ename", "e.ename_he", lang))
 	rows, err := DB.Query(query, gid)
 	if err != nil {
 		log.Println("Error getting equipment:", err)
@@ -147,17 +227,19 @@ func getUsernameFromUserID(userID string) string {
 	return uname
 }
 
-func getCartByUserID(userID string) []CartEntry {
+func getCartByUserID(userID string, lang string) []CartEntry {
 	log.Println("Got to getCartByUserID function")
 	uid, _ := strconv.Atoi(userID)
 	var cart []CartEntry
-	queryEntry := `
-		SELECT ce.ceid, g.gid, g.gname, s.sid, s.sname
+	
+	queryEntry := fmt.Sprintf(`
+		SELECT ce.ceid, g.gid, %s, s.sid, %s
 		FROM cart_entry ce
 		JOIN grade g ON ce.gid = g.gid
 		JOIN school s ON g.sid = s.sid
 		WHERE ce.uid = $1
-	`
+	`, localizedName("g.gname", "g.gname_he", lang), localizedName("s.sname", "s.sname_he", lang))
+	
 	rows, err := DB.Query(queryEntry, uid)
 	if err != nil {
 		log.Println("Error getting cart entries:", err)
@@ -174,24 +256,25 @@ func getCartByUserID(userID string) []CartEntry {
 		}
 		ce.ID = entryID
 
-		ce.Items = getCartItemsFromApply(entryID)
+		ce.Items = getCartItemsFromApply(entryID, lang)
 
 		cart = append(cart, ce)
 	}
 	return cart
 }
 
-func getCartItemsFromApply(ceidStr string) []Equipment {
+func getCartItemsFromApply(ceidStr string, lang string) []Equipment {
 	log.Println("Got to getCartItemsFromApply function")
 	ceid, _ := strconv.Atoi(ceidStr)
 
-	query := `
-		SELECT e.eid, e.ename, e.price, COUNT(a.eid) as qty
-		FROM cart_item a
-		JOIN equipment e ON a.eid = e.eid
-		WHERE a.ceid = $1
-		GROUP BY e.eid, e.ename, e.price
-	`
+	query := fmt.Sprintf(`
+		SELECT e.eid, %s, e.price, COUNT(ci.eid) as qty
+		FROM cart_item ci
+		JOIN equipment e ON ci.eid = e.eid
+		WHERE ci.ceid = $1
+		GROUP BY e.eid, e.ename, e.ename_he, e.price
+	`, localizedName("e.ename", "e.ename_he", lang))
+	
 	rows, err := DB.Query(query, ceid)
 	if err != nil {
 		log.Println("Error reading apply table:", err)
@@ -233,8 +316,8 @@ func saveCart(userID string, cart []CartEntry) error {
 		err := tx.QueryRow("INSERT INTO cart_entry (gid, uid) VALUES ($1, $2) RETURNING ceid", gid, uid).Scan(&newCeid)
 		if err != nil {
 			tx.Rollback()
-			log.Println("Error inserting cartEntry:", err)
-			return fmt.Errorf("inserting cartEntry: %w", err)
+			log.Println("Error inserting cart_entry:", err)
+			return fmt.Errorf("inserting cart_entry: %w", err)
 		}
 
 		for _, item := range entry.Items {
@@ -244,8 +327,8 @@ func saveCart(userID string, cart []CartEntry) error {
 				_, err := tx.Exec("INSERT INTO cart_item (ceid, eid) VALUES ($1, $2)", newCeid, eid)
 				if err != nil {
 					tx.Rollback()
-					log.Println("Error inserting to apply:", err)
-					return fmt.Errorf("inserting to apply: %w", err)
+					log.Println("Error inserting to cart_item:", err)
+					return fmt.Errorf("inserting to cart_item: %w", err)
 				}
 			}
 		}
@@ -256,4 +339,102 @@ func saveCart(userID string, cart []CartEntry) error {
 		return fmt.Errorf("committing transaction: %w", err)
 	}
 	return nil
+}
+
+// NEW - adding purchase history
+func getUserOrderHistory(userID string, lang string) []Order {
+	log.Println("Got to getUserOrderHistory function")
+	uid, _ := strconv.Atoi(userID)
+	var orders []Order
+
+	queryOrders := `
+       SELECT oid, gid, purchase_date, total_amount
+       FROM orders
+       WHERE uid = $1
+       ORDER BY purchase_date DESC;
+    `
+	rows, err := DB.Query(queryOrders, uid)
+	if err != nil {
+		log.Println("Error getting orders history:", err)
+		return []Order{}
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var o Order
+		var t time.Time
+
+		if err := rows.Scan(&o.ID, &o.GradeID, &t, &o.TotalAmount); err != nil {
+			log.Println("Error scanning order row:", err)
+			continue
+		}
+
+		o.PurchaseDate = t.Format("2006-01-02 15:04:05")
+
+		o.Items = getOrderItems(o.ID, lang)
+
+		orders = append(orders, o)
+	}
+
+	return orders
+}
+
+func getOrderItems(orderID string, lang string) []OrderItem {
+	oid, _ := strconv.Atoi(orderID)
+	var items []OrderItem
+
+	queryItems := fmt.Sprintf(`
+       SELECT
+          %s,
+          oi.quantity,
+          oi.price_at_purchase,
+          (oi.quantity * oi.price_at_purchase) as total_item_cost
+       FROM order_item oi
+       JOIN equipment e ON oi.eid = e.eid
+       WHERE oi.oid = $1;
+    `, localizedName("e.ename", "e.ename_he", lang))
+	rows, err := DB.Query(queryItems, oid)
+	if err != nil {
+		log.Println("Error getting order items:", err)
+		return []OrderItem{}
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var item OrderItem
+
+		if err := rows.Scan(&item.EquipmentName, &item.Quantity, &item.Price, &item.TotalPrice); err != nil {
+			log.Println("Error scanning order item row:", err)
+			continue
+		}
+		items = append(items, item)
+	}
+
+	return items
+}
+
+func getOrderHistoryHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		JSONError(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	cookie, err := r.Cookie("sessionid")
+	if err != nil {
+		JSONError(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	userID, exists := sessions[cookie.Value]
+	if !exists {
+		JSONError(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	history := getUserOrderHistory(userID, parseLang(r))
+
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(history); err != nil {
+		log.Printf("Failed to encode history response: %v", err)
+	}
 }

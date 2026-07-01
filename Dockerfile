@@ -1,6 +1,5 @@
 # Use the official Go image to compile the application
 FROM golang:1.25-alpine AS builder
-LABEL authors="avner"
 
 # Set the working directory for building
 WORKDIR /app

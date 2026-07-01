@@ -1,4 +1,4 @@
-BINARY_NAME=motzklist-api-gateway
+BINARY_NAME=motzklist-backend
 BUILD_DIR=./build
 
 # Default command: runs the server (using '.' to include all files in package)

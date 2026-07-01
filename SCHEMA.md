@@ -2,6 +2,22 @@
 
 This document defines the RESTful JSON contract for the `api-gateway` service. All endpoints are prefixed with `/api/`.
 
+## Localization
+
+School, grade, and equipment names are multi-language. Every public read endpoint
+(`/api/schools`, `/api/grades`, `/api/equipment`, `/api/cart`, `/api/history`)
+accepts an optional **`lang`** query parameter:
+
+| `lang` | Behaviour |
+| :--- | :--- |
+| _absent_ or anything other than `he` | Returns the default (English) name. |
+| `he` | Returns the Hebrew translation, falling back to the English name when no translation exists. |
+
+The `name` field in each object below is already localized to the requested
+`lang`; clients simply render it as-is. Translations are stored in the database
+in parallel `*_he` columns (`sname_he`, `gname_he`, `ename_he`) and can be managed
+through the admin endpoints, which expose an optional `nameHe` field.
+
 ## Core Data Structures
 
 The following JSON structures are used across all endpoints:
@@ -42,7 +58,7 @@ Retrieves the initial list of schools to populate the first dropdown.
 | **Authentication** | None (MVP) |
 
 #### Request
-* **Query Parameters:** None.
+* **Query Parameters:** `lang` (optional) — `he` for Hebrew names, otherwise English.
 * **Body:** None.
 
 #### Response (200 OK)
