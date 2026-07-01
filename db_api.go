@@ -231,6 +231,7 @@ func getCartByUserID(userID string, lang string) []CartEntry {
 	log.Println("Got to getCartByUserID function")
 	uid, _ := strconv.Atoi(userID)
 	var cart []CartEntry
+	
 	queryEntry := fmt.Sprintf(`
 		SELECT ce.ceid, g.gid, %s, s.sid, %s
 		FROM cart_entry ce
@@ -238,6 +239,7 @@ func getCartByUserID(userID string, lang string) []CartEntry {
 		JOIN school s ON g.sid = s.sid
 		WHERE ce.uid = $1
 	`, localizedName("g.gname", "g.gname_he", lang), localizedName("s.sname", "s.sname_he", lang))
+	
 	rows, err := DB.Query(queryEntry, uid)
 	if err != nil {
 		log.Println("Error getting cart entries:", err)
@@ -272,6 +274,7 @@ func getCartItemsFromApply(ceidStr string, lang string) []Equipment {
 		WHERE ci.ceid = $1
 		GROUP BY e.eid, e.ename, e.ename_he, e.price
 	`, localizedName("e.ename", "e.ename_he", lang))
+	
 	rows, err := DB.Query(query, ceid)
 	if err != nil {
 		log.Println("Error reading apply table:", err)

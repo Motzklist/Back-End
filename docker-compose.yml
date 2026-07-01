@@ -1,0 +1,52 @@
+version: '3.8'
+
+services:
+  # ------------------------------------------------------------
+  # 1. Frontend Service (Next.js)
+  # ------------------------------------------------------------
+  web:
+    container_name: motzklist_web
+    build:
+      context: ../front
+      dockerfile: Dockerfile
+    ports:
+      - 3000:3000
+    environment:
+      # The browser needs the exact IP of the server to reach the backend
+      - NEXT_PUBLIC_API_URL=http://10.10.32.102:8080
+    depends_on:
+      - api-gateway
+
+  # ------------------------------------------------------------
+  # 2. API Gateway Service (Go)
+  # ------------------------------------------------------------
+  api-gateway:
+    container_name: motzklist_api_gateway
+    build:
+      context: ../back
+      dockerfile: Dockerfile
+    ports:
+      - 8080:8080
+    depends_on:
+      - database
+    env_file:
+      - ../back/.env # תוקן הנתיב לתיקייה הנכונה
+      
+  # ------------------------------------------------------------
+  # 3. Database Service (PostgreSQL)
+  # ------------------------------------------------------------
+  database:
+    container_name: motzklist_db
+    image: postgres:15-alpine
+    restart: always
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: motzklist_db
+    volumes:
+      - motzklist-data:/var/lib/postgresql/data
+      - ../database/init.sql:/docker-entrypoint-initdb.d/init.sql
+
+# הצהרה על הווליום עבור מסד הנתונים
+volumes:
+  motzklist-data:
