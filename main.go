@@ -8,6 +8,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strings"
 
 	"github.com/joho/godotenv"
 )
@@ -79,28 +80,54 @@ type Order struct {
 	Items        []OrderItem `json:"items"`
 }
 
+// allowedOrigins returns the CORS-permitted origins from CLIENT_ORIGIN
+// (comma-separated; whitespace and trailing slashes trimmed), defaulting to the
+// local dev origin.
+func allowedOrigins() []string {
+	raw := os.Getenv("CLIENT_ORIGIN")
+	if raw == "" {
+		raw = "http://localhost:3000"
+	}
+	origins := make([]string, 0, 2)
+	for _, o := range strings.Split(raw, ",") {
+		if o = strings.TrimRight(strings.TrimSpace(o), "/"); o != "" {
+			origins = append(origins, o)
+		}
+	}
+	return origins
+}
+
+// originAllowed reports whether the request's Origin header is in the allowlist,
+// comparing case-insensitively and ignoring a trailing slash on either side.
+func originAllowed(origin string) bool {
+	if origin == "" {
+		return false
+	}
+	origin = strings.TrimRight(origin, "/")
+	for _, allowed := range allowedOrigins() {
+		if strings.EqualFold(origin, allowed) {
+			return true
+		}
+	}
+	return false
+}
+
 func enableCORS(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		origin := r.Header.Get("Origin")
-		// Allow only the frontend origin
-		allowed_origin := os.Getenv("CLIENT_ORIGIN")
-		if allowed_origin == "" {
-			allowed_origin = "http://localhost:3000" // default for local development
-		}
-		if origin == allowed_origin {
+		if originAllowed(origin) {
 			w.Header().Set("Access-Control-Allow-Origin", origin)
+			w.Header().Add("Vary", "Origin")
 		}
-		// For production, use your real frontend URL above
 
-		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, OPTIONS")
-		// NEW - changing the value
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
 		w.Header().Set(
 			"Access-Control-Allow-Headers",
 			"Content-Type, Authorization",
 		)
 		w.Header().Set("Access-Control-Allow-Credentials", "true")
 
-		if r.Method == "OPTIONS" {
+		if r.Method == http.MethodOptions {
 			w.WriteHeader(http.StatusOK)
 			return
 		}

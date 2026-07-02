@@ -66,6 +66,56 @@ func TestCORS_OptionsStatus(t *testing.T) {
 	}
 }
 
+// corsOrigin runs an OPTIONS preflight from the given Origin with CLIENT_ORIGIN
+// set to clientOrigin, and returns the reflected Access-Control-Allow-Origin.
+func corsOrigin(t *testing.T, clientOrigin, requestOrigin string) string {
+	t.Helper()
+	t.Setenv("CLIENT_ORIGIN", clientOrigin)
+	req, _ := http.NewRequest("OPTIONS", "/api/schools", nil)
+	req.Header.Set("Origin", requestOrigin)
+	rr := httptest.NewRecorder()
+	http.HandlerFunc(enableCORS(func(w http.ResponseWriter, r *http.Request) {})).ServeHTTP(rr, req)
+	return rr.Header().Get("Access-Control-Allow-Origin")
+}
+
+func TestCORS_AllowsConfiguredOrigin(t *testing.T) {
+	origin := "https://motzklist-web.run.app"
+	if got := corsOrigin(t, origin, origin); got != origin {
+		t.Errorf("expected Allow-Origin %q, got %q", origin, got)
+	}
+}
+
+func TestCORS_ToleratesTrailingSlashInConfig(t *testing.T) {
+	if got := corsOrigin(t, "https://motzklist-web.run.app/", "https://motzklist-web.run.app"); got != "https://motzklist-web.run.app" {
+		t.Errorf("trailing slash in CLIENT_ORIGIN should still allow the origin, got %q", got)
+	}
+}
+
+func TestCORS_SupportsMultipleOrigins(t *testing.T) {
+	config := "http://localhost:3000, https://motzklist-web.run.app"
+	if got := corsOrigin(t, config, "https://motzklist-web.run.app"); got != "https://motzklist-web.run.app" {
+		t.Errorf("second configured origin should be allowed, got %q", got)
+	}
+	if got := corsOrigin(t, config, "http://localhost:3000"); got != "http://localhost:3000" {
+		t.Errorf("first configured origin should be allowed, got %q", got)
+	}
+}
+
+func TestCORS_RejectsUnknownOrigin(t *testing.T) {
+	if got := corsOrigin(t, "https://motzklist-web.run.app", "https://evil.example.com"); got != "" {
+		t.Errorf("unknown origin must not be reflected, got %q", got)
+	}
+}
+
+func TestCORS_MethodsIncludeDelete(t *testing.T) {
+	req, _ := http.NewRequest("OPTIONS", "/api/admin/schools/1", nil)
+	rr := httptest.NewRecorder()
+	http.HandlerFunc(enableCORS(func(w http.ResponseWriter, r *http.Request) {})).ServeHTTP(rr, req)
+	if methods := rr.Header().Get("Access-Control-Allow-Methods"); !strings.Contains(methods, "DELETE") {
+		t.Errorf("CORS methods should include DELETE for admin endpoints, got %q", methods)
+	}
+}
+
 // ==========================================
 // 3. Schools API Tests
 // ==========================================
