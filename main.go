@@ -151,6 +151,13 @@ func main() {
 	http.HandleFunc("/api/auth/status", enableCORS(authStatusHandler))
 	http.HandleFunc("/api/login", enableCORS(postLoginHandler))
 	http.HandleFunc("/api/logout", enableCORS(logoutHandler))
+
+	// Third-party (OAuth) sign-in. Browser flow for the public Front-End (which
+	// talks to this gateway directly) plus a server-to-server exchange for the
+	// Admin Front-End (whose Next.js server proxies requests). See oauth_handlers.go.
+	http.HandleFunc("GET /api/auth/{provider}/start", enableCORS(oauthStartHandler))
+	http.HandleFunc("GET /api/auth/{provider}/callback", enableCORS(oauthCallbackHandler))
+	http.HandleFunc("POST /api/auth/{provider}/exchange", enableCORS(oauthExchangeHandler))
 	http.HandleFunc("/api/cart", enableCORS(getPostCartHandler))
 	http.HandleFunc("/api/create-checkout-session", enableCORS(CreateCheckoutSession))
 	http.HandleFunc("/api/history", enableCORS(getOrderHistoryHandler))

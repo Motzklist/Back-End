@@ -214,6 +214,32 @@ func getUserIDByCredentials(userName, password string) string {
 	return uid
 }
 
+// findOrCreateOAuthUserDB maps a third-party identity (by email) to a local
+// user id, provisioning the user on first sign-in. The email is stored as the
+// username; the password column gets an unusable random value since OAuth users
+// never authenticate with a local password. Wired via the oauthFindOrCreateUser
+// var so tests can stub it without a database.
+func findOrCreateOAuthUserDB(email, name string) (string, error) {
+	var uid string
+	err := DB.QueryRow("SELECT uid FROM users WHERE uname = $1", email).Scan(&uid)
+	if err == nil {
+		return uid, nil
+	}
+	if err != sql.ErrNoRows {
+		return "", fmt.Errorf("looking up oauth user: %w", err)
+	}
+
+	placeholder := generateSessionID() // unusable password; OAuth users never log in with one
+	if err := DB.QueryRow(
+		"INSERT INTO users (uname, password) VALUES ($1, $2) RETURNING uid",
+		email, placeholder,
+	).Scan(&uid); err != nil {
+		return "", fmt.Errorf("provisioning oauth user: %w", err)
+	}
+	log.Printf("Provisioned new OAuth user %q (uid=%s)", email, uid)
+	return uid, nil
+}
+
 func getUsernameFromUserID(userID string) string {
 	log.Println("Got to getUsernameFromUserID function")
 	var uname string

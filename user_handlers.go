@@ -6,6 +6,22 @@ import (
 	"net/http"
 )
 
+// startSession creates a new server session for uid and sets the sessionid
+// cookie. Shared by password login and OAuth sign-in so cookie attributes stay
+// consistent across every authentication path.
+func startSession(w http.ResponseWriter, uid string) {
+	sessionID := generateSessionID()
+	sessions[sessionID] = uid
+	http.SetCookie(w, &http.Cookie{
+		Name:     "sessionid",
+		Value:    sessionID,
+		Path:     "/",
+		HttpOnly: true,
+		//Secure: true, // Uncomment this line if using HTTPS
+		//SameSite: http.SameSiteStrictMode,
+	})
+}
+
 // adding handlers to login page & shopping cart
 func authStatusHandler(w http.ResponseWriter, r *http.Request) {
 	cookie, err := r.Cookie("sessionid")
@@ -54,19 +70,8 @@ func postLoginHandler(w http.ResponseWriter, r *http.Request) {
 	if userId == "" {
 		JSONError(w, "Incorrect username or password. Please try again.", http.StatusUnauthorized)
 	} else {
-		// Session generation
-		sessionID := generateSessionID()
-		sessions[sessionID] = userId
-
-		// Cookie setting
-		http.SetCookie(w, &http.Cookie{
-			Name:     "sessionid",
-			Value:    sessionID,
-			Path:     "/",
-			HttpOnly: true,
-			//Secure: true, // Uncomment this line if using HTTPS
-			//SameSite: http.SameSiteStrictMode,
-		})
+		// Session generation + cookie (shared with the OAuth sign-in paths).
+		startSession(w, userId)
 		w.Header().Set("Content-Type", "application/json")
 		err := json.NewEncoder(w).Encode(map[string]string{"userid": userId, "username": credentials.Username})
 		if err != nil {
